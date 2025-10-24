@@ -12,6 +12,9 @@ class Settings(BaseSettings):
     supabase_url: str
     supabase_service_role_key: str
 
+    # AI Services
+    anthropic_api_key: str
+
     # API Gateway
     admin_api_key: str = "admin-secret-key-change-in-production"
     gateway_host: str = "0.0.0.0"
