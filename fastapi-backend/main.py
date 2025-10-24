@@ -179,11 +179,12 @@ async def proxy_to_user_api(
             body = await request.body()
 
         # Make the request to the user's app
-        response = getattr(client, request.method.lower())(
-            url,
-            content=body,
-            headers=dict(request.headers)
-        )
+        method_fn = getattr(client, request.method.lower())
+
+        if request.method in ["POST", "PUT", "PATCH"] and body:
+            response = method_fn(url, data=body, headers=dict(request.headers))
+        else:
+            response = method_fn(url, headers=dict(request.headers))
 
         # Log usage
         response_time = (datetime.utcnow() - start_time).total_seconds() * 1000
