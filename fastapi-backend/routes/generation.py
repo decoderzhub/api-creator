@@ -4,14 +4,13 @@ Handles AI-powered API code generation
 """
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
-import os
 import anthropic
 
 from .auth import verify_token
+from config import get_settings
 
 router = APIRouter()
-
-ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
+settings = get_settings()
 
 
 class GenerateAPIRequest(BaseModel):
@@ -23,10 +22,10 @@ class GenerateAPIRequest(BaseModel):
 async def generate_api_code(request: GenerateAPIRequest, user_id: str = Depends(verify_token)):
     """Generate FastAPI code from natural language description using Anthropic Claude"""
     try:
-        if not ANTHROPIC_API_KEY:
+        if not settings.anthropic_api_key:
             raise HTTPException(status_code=500, detail="Anthropic API key not configured")
 
-        client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+        client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
 
         system_prompt = """You are an expert FastAPI developer. Generate production-ready FastAPI code based on the user's description.
 
