@@ -34,15 +34,14 @@ async def suggest_prompts(request: SuggestPromptsRequest, user_id: str = Depends
 
         client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
 
-        system_prompt = """You are an expert API designer. Given an API name and partial description, suggest 3 complete, detailed API descriptions that:
-1. Are production-ready and specific
-2. Include authentication, rate limiting, and error handling details
-3. Describe endpoints, data formats, and key features
-4. Are 2-3 sentences long
-5. Build upon what the user has started typing
+        system_prompt = """You are an expert API designer. Given an API name and partial description, suggest 3 complete, concise API descriptions that:
+1. Are exactly 5-6 words each
+2. Are production-ready and specific
+3. Describe the core functionality
+4. Build upon what the user has started typing
 
-Return ONLY a JSON array of 3 strings, nothing else. Example format:
-["suggestion 1", "suggestion 2", "suggestion 3"]"""
+Return ONLY a JSON array of 3 strings, nothing else. Each string must be 5-6 words. Example format:
+["Real-time weather data for cities", "Get stock prices and trends", "Send email notifications with templates"]"""
 
         user_prompt = f"""API Name: {request.apiName or 'Unnamed API'}
 Partial Description: {request.partialPrompt or 'No description yet'}
@@ -87,13 +86,13 @@ async def suggest_about(request: SuggestAboutRequest, user_id: str = Depends(ver
         client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
 
         system_prompt = """You are writing marketplace descriptions for APIs. Given an API name and description, suggest 3 concise "about" descriptions that:
-1. Are 1-2 sentences summarizing what the API does
-2. Are user-friendly and appealing for a marketplace
-3. Highlight key features and use cases
+1. Are exactly 5-6 words each
+2. Are user-friendly and appealing
+3. Highlight the core value proposition
 4. Are compelling for potential users
 
-Return ONLY a JSON array of 3 strings, nothing else. Example format:
-["about 1", "about 2", "about 3"]"""
+Return ONLY a JSON array of 3 strings, nothing else. Each string must be 5-6 words. Example format:
+["Real-time weather for any city", "Track stock prices and trends", "Send automated email notifications instantly"]"""
 
         user_prompt = f"""API Name: {request.apiName or 'Unnamed API'}
 API Description: {request.partialPrompt or 'No description yet'}

@@ -232,31 +232,49 @@ export const Dashboard = () => {
                                 initial={{ opacity: 0, height: 0 }}
                                 animate={{ opacity: 1, height: 'auto' }}
                                 exit={{ opacity: 0, height: 0 }}
-                                className="mt-3 space-y-2 pl-6 border-l-2 border-blue-200 dark:border-blue-800"
+                                className="mt-3 space-y-3 pl-6 border-l-2 border-blue-200 dark:border-blue-800"
                               >
-                                {endpoints.map((endpoint, idx) => (
-                                  <div key={idx} className="text-xs">
-                                    <div className="flex items-center gap-2 mb-1">
-                                      <span className={`px-2 py-0.5 font-semibold rounded ${
-                                        endpoint.method === 'GET' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
-                                        endpoint.method === 'POST' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
-                                        endpoint.method === 'PUT' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
-                                        endpoint.method === 'DELETE' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
-                                        'bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-400'
-                                      }`}>
-                                        {endpoint.method}
-                                      </span>
-                                      <code className="font-mono text-gray-900 dark:text-gray-100">
-                                        {endpoint.path}
-                                      </code>
+                                {endpoints.map((endpoint, idx) => {
+                                  const curlExample = formatCurlExample(api.endpoint_url, endpoint, api.api_key || 'your-api-key');
+                                  return (
+                                    <div key={idx} className="text-xs border border-gray-200 dark:border-gray-700 rounded p-2">
+                                      <div className="flex items-center gap-2 mb-1">
+                                        <span className={`px-2 py-0.5 font-semibold rounded ${
+                                          endpoint.method === 'GET' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
+                                          endpoint.method === 'POST' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
+                                          endpoint.method === 'PUT' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
+                                          endpoint.method === 'DELETE' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
+                                          'bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-400'
+                                        }`}>
+                                          {endpoint.method}
+                                        </span>
+                                        <code className="font-mono text-gray-900 dark:text-gray-100">
+                                          {endpoint.path}
+                                        </code>
+                                      </div>
+                                      {endpoint.summary && (
+                                        <p className="text-gray-600 dark:text-gray-400 mb-2">
+                                          {endpoint.summary}
+                                        </p>
+                                      )}
+                                      <div className="mt-2 bg-gray-900 dark:bg-black rounded p-2 relative group">
+                                        <pre className="text-xs text-gray-100 overflow-x-auto">
+                                          <code>{curlExample}</code>
+                                        </pre>
+                                        <button
+                                          onClick={() => {
+                                            navigator.clipboard.writeText(curlExample);
+                                            addToast('Copied to clipboard!', 'success');
+                                          }}
+                                          className="absolute top-2 right-2 p-1 bg-gray-800 hover:bg-gray-700 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                                          title="Copy to clipboard"
+                                        >
+                                          <Copy className="w-3 h-3 text-gray-300" />
+                                        </button>
+                                      </div>
                                     </div>
-                                    {endpoint.summary && (
-                                      <p className="text-gray-600 dark:text-gray-400 ml-14">
-                                        {endpoint.summary}
-                                      </p>
-                                    )}
-                                  </div>
-                                ))}
+                                  );
+                                })}
                               </motion.div>
                             )}
                           </div>
