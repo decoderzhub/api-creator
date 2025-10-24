@@ -1,0 +1,61 @@
+version: '3.8'
+
+services:
+  fastapi-gateway:
+    build:
+      context: ./fastapi-backend
+      dockerfile: Dockerfile
+    container_name: api-builder-gateway
+    ports:
+      - "8000:8000"
+    environment:
+      - SUPABASE_URL=${VITE_SUPABASE_URL}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+      - ADMIN_API_KEY=${ADMIN_API_KEY:-admin-secret-key-change-in-production}
+      - REDIS_URL=redis://redis:6379
+      - USE_REDIS=false
+    env_file:
+      - .env
+    volumes:
+      - ./fastapi-backend:/app
+    restart: unless-stopped
+    depends_on:
+      - redis
+    networks:
+      - api-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: api-builder-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+    networks:
+      - api-network
+
+  # Optional: Nginx reverse proxy for production
+  nginx:
+    image: nginx:alpine
+    container_name: api-builder-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - fastapi-gateway
+    restart: unless-stopped
+    networks:
+      - api-network
+    profiles:
+      - production
+
+volumes:
+  redis-data:
+
+networks:
+  api-network:
+    driver: bridge
