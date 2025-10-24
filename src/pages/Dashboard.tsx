@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Trash2, ExternalLink, Copy, Activity, TrendingUp, Globe, X, List, ChevronDown, ChevronUp } from 'lucide-react';
+import { Trash2, ExternalLink, Copy, Activity, TrendingUp, Globe, X, List, ChevronDown, ChevronUp, Edit2, Check } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
@@ -22,6 +22,10 @@ export const Dashboard = () => {
   const [selectedApi, setSelectedApi] = useState<API | null>(null);
   const [publishLoading, setPublishLoading] = useState(false);
   const [expandedApiId, setExpandedApiId] = useState<string | null>(null);
+  const [editingApiId, setEditingApiId] = useState<string | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editAbout, setEditAbout] = useState('');
+  const [saveLoading, setSaveLoading] = useState(false);
   const { profile } = useAuth();
   const { addToast } = useToast();
 
@@ -70,6 +74,52 @@ export const Dashboard = () => {
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     addToast('Copied to clipboard!', 'success');
+  };
+
+  const startEditing = (api: API) => {
+    setEditingApiId(api.id);
+    setEditName(api.name);
+    setEditAbout(api.about || '');
+  };
+
+  const cancelEditing = () => {
+    setEditingApiId(null);
+    setEditName('');
+    setEditAbout('');
+  };
+
+  const saveEdits = async (apiId: string) => {
+    if (!editName.trim()) {
+      addToast('API name cannot be empty', 'error');
+      return;
+    }
+
+    setSaveLoading(true);
+    try {
+      const { error } = await supabase
+        .from('apis')
+        .update({
+          name: editName.trim(),
+          about: editAbout.trim() || null,
+        })
+        .eq('id', apiId);
+
+      if (error) throw error;
+
+      setApis(apis.map(api =>
+        api.id === apiId
+          ? { ...api, name: editName.trim(), about: editAbout.trim() || null }
+          : api
+      ));
+
+      addToast('API updated successfully!', 'success');
+      cancelEditing();
+    } catch (error) {
+      console.error('Error updating API:', error);
+      addToast('Failed to update API', 'error');
+    } finally {
+      setSaveLoading(false);
+    }
   };
 
   const handlePublishClick = (api: API) => {
@@ -200,18 +250,70 @@ export const Dashboard = () => {
                 >
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                          {api.name}
-                        </h3>
-                        <Badge variant={api.status === 'active' ? 'success' : api.status === 'paused' ? 'warning' : 'danger'}>
-                          {api.status}
-                        </Badge>
-                      </div>
-                      {api.about && (
-                        <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                          <strong>About:</strong> {api.about}
-                        </p>
+                      {editingApiId === api.id ? (
+                        <div className="space-y-3 mb-3">
+                          <div>
+                            <label className="text-xs text-gray-500 dark:text-gray-500 mb-1 block">API Name</label>
+                            <input
+                              type="text"
+                              value={editName}
+                              onChange={(e) => setEditName(e.target.value)}
+                              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                              placeholder="API Name"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-xs text-gray-500 dark:text-gray-500 mb-1 block">About</label>
+                            <input
+                              type="text"
+                              value={editAbout}
+                              onChange={(e) => setEditAbout(e.target.value)}
+                              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                              placeholder="About (5-6 words)"
+                            />
+                          </div>
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              onClick={() => saveEdits(api.id)}
+                              disabled={saveLoading}
+                            >
+                              <Check className="w-4 h-4 mr-1" />
+                              {saveLoading ? 'Saving...' : 'Save'}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={cancelEditing}
+                              disabled={saveLoading}
+                            >
+                              Cancel
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="flex items-center gap-3 mb-2">
+                            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                              {api.name}
+                            </h3>
+                            <Badge variant={api.status === 'active' ? 'success' : api.status === 'paused' ? 'warning' : 'danger'}>
+                              {api.status}
+                            </Badge>
+                            <button
+                              onClick={() => startEditing(api)}
+                              className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors"
+                              title="Edit API details"
+                            >
+                              <Edit2 className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                            </button>
+                          </div>
+                          {api.about && (
+                            <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                              <strong>About:</strong> {api.about}
+                            </p>
+                          )}
+                        </>
                       )}
 
                       {api.code_snapshot && (() => {
