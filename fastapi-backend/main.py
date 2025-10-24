@@ -43,6 +43,9 @@ app.add_middleware(
 
 api_loader = APILoader()
 
+# Make api_loader accessible to routes via app.state
+app.state.api_loader = api_loader
+
 
 @app.on_event("startup")
 async def startup_event():
