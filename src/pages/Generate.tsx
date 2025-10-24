@@ -134,7 +134,7 @@ export const Generate = () => {
         description: `Generated API: ${apiName}`,
         endpoint_url: endpointUrl,
         api_key: apiKey,
-        status: 'deploying',
+        status: 'active',
         code_snapshot: codeData.code,
       }).select().single();
 
