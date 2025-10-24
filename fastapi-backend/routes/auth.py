@@ -2,13 +2,16 @@
 Authentication utilities for route protection
 """
 from fastapi import Header, HTTPException
-import os
 from supabase import create_client, Client
+from functools import lru_cache
+from config import get_settings
 
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
 
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+@lru_cache()
+def get_supabase_client() -> Client:
+    """Get cached Supabase client"""
+    settings = get_settings()
+    return create_client(settings.supabase_url, settings.supabase_service_role_key)
 
 
 async def verify_token(authorization: str = Header(None)) -> str:
@@ -19,6 +22,7 @@ async def verify_token(authorization: str = Header(None)) -> str:
     token = authorization.replace("Bearer ", "")
 
     try:
+        supabase = get_supabase_client()
         response = supabase.auth.get_user(token)
         if response.user:
             return response.user.id

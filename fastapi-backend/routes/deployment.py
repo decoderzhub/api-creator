@@ -5,17 +5,10 @@ Handles API deployment and status management
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from datetime import datetime
-import os
-from supabase import create_client, Client
 
-from .auth import verify_token
+from .auth import verify_token, get_supabase_client
 
 router = APIRouter()
-
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
-
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 
 
 class DeployAPIRequest(BaseModel):
@@ -26,6 +19,7 @@ class DeployAPIRequest(BaseModel):
 async def deploy_api(request: DeployAPIRequest, user_id: str = Depends(verify_token)):
     """Deploy an API by updating its status to active"""
     try:
+        supabase = get_supabase_client()
         response = supabase.table("apis").select("*").eq("id", request.apiId).eq("user_id", user_id).execute()
 
         if not response.data:

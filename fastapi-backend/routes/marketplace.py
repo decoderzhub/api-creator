@@ -6,17 +6,10 @@ from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime
-import os
-from supabase import create_client, Client
 
-from .auth import verify_token
+from .auth import verify_token, get_supabase_client
 
 router = APIRouter()
-
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
-
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 
 
 class PublishMarketplaceRequest(BaseModel):
@@ -39,6 +32,7 @@ class UpdateMarketplaceRequest(BaseModel):
 async def get_marketplace_apis(user_id: str = Depends(verify_token)):
     """Get all public marketplace APIs"""
     try:
+        supabase = get_supabase_client()
         response = supabase.table("marketplace").select("*, apis(*)").eq("is_public", True).execute()
 
         return {"listings": response.data}
@@ -51,6 +45,7 @@ async def get_marketplace_apis(user_id: str = Depends(verify_token)):
 async def publish_to_marketplace(request: PublishMarketplaceRequest, user_id: str = Depends(verify_token)):
     """Publish API to marketplace"""
     try:
+        supabase = get_supabase_client()
         api_response = supabase.table("apis").select("*").eq("id", request.apiId).eq("user_id", user_id).execute()
 
         if not api_response.data:
@@ -86,6 +81,7 @@ async def update_marketplace_listing(
 ):
     """Update marketplace listing"""
     try:
+        supabase = get_supabase_client()
         listing_response = supabase.table("marketplace").select("*").eq("id", marketplace_id).eq("seller_id", user_id).execute()
 
         if not listing_response.data:

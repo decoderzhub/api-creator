@@ -5,17 +5,10 @@ Handles usage tracking and analytics
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from datetime import datetime, timedelta
-import os
-from supabase import create_client, Client
 
-from .auth import verify_token
+from .auth import verify_token, get_supabase_client
 
 router = APIRouter()
-
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
-
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 
 
 class TrackUsageRequest(BaseModel):
@@ -29,6 +22,7 @@ class TrackUsageRequest(BaseModel):
 async def get_api_analytics(api_id: str, user_id: str = Depends(verify_token)):
     """Get analytics for a specific API"""
     try:
+        supabase = get_supabase_client()
         api_response = supabase.table("apis").select("*").eq("id", api_id).eq("user_id", user_id).execute()
 
         if not api_response.data:
@@ -74,6 +68,7 @@ async def get_api_analytics(api_id: str, user_id: str = Depends(verify_token)):
 async def get_analytics_overview(user_id: str = Depends(verify_token)):
     """Get overview analytics for all user APIs"""
     try:
+        supabase = get_supabase_client()
         apis_response = supabase.table("apis").select("*").eq("user_id", user_id).execute()
 
         total_apis = len(apis_response.data)
@@ -100,6 +95,7 @@ async def get_analytics_overview(user_id: str = Depends(verify_token)):
 async def track_api_usage(request: TrackUsageRequest, user_id: str = Depends(verify_token)):
     """Track API usage"""
     try:
+        supabase = get_supabase_client()
         supabase.table("api_usage_logs").insert({
             "api_id": request.apiId,
             "user_id": user_id,
