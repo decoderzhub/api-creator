@@ -4,6 +4,9 @@ Authentication utilities for route protection
 from fastapi import Header, HTTPException
 from supabase import create_client, Client
 from functools import lru_cache
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import get_settings
 
 

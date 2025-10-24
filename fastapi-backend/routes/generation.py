@@ -5,9 +5,12 @@ Handles AI-powered API code generation
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 import anthropic
+import sys
+import os
 
-from .auth import verify_token
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import get_settings
+from routes.auth import verify_token
 
 router = APIRouter()
 settings = get_settings()
