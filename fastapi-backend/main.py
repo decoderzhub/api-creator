@@ -172,7 +172,7 @@ async def proxy_to_user_api(
         )
 
         # Log usage
-        response_time = (datetime.utcnow() - start_time).total_microseconds() / 1000
+        response_time = (datetime.utcnow() - start_time).total_seconds() * 1000
         await log_api_usage(
             api_id=api_id,
             user_id=api_metadata.get("user_id"),
@@ -187,7 +187,7 @@ async def proxy_to_user_api(
         print(f"Error executing API {api_id}: {str(e)}")
 
         # Log error
-        response_time = (datetime.utcnow() - start_time).total_microseconds() / 1000
+        response_time = (datetime.utcnow() - start_time).total_seconds() * 1000
         await log_api_usage(
             api_id=api_id,
             user_id=api_metadata.get("user_id"),
