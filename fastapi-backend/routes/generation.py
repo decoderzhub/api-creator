@@ -34,14 +34,26 @@ async def generate_api_code(request: GenerateAPIRequest, user_id: str = Depends(
 
 Requirements:
 1. Use FastAPI with proper typing and validation
-2. Include authentication, error handling, and rate limiting where appropriate
+2. Include error handling where appropriate
 3. Use Pydantic models for request/response validation
 4. Include proper HTTP status codes and error responses
 5. Add docstrings and comments
 6. Follow REST best practices
 7. Return ONLY the Python code, no explanations
+8. CRITICAL: Only use these available libraries:
+   - fastapi
+   - pydantic
+   - httpx (for HTTP requests)
+   - typing (for type hints)
+   - datetime
+   - json
+   - random
+   - uuid
+   DO NOT import any other external libraries like aiohttp, requests, passlib, bcrypt, etc.
+9. For any data storage, use simple in-memory structures (dicts, lists) as this is a demo
+10. Do NOT include authentication or rate limiting - keep it simple
 
-The code should be a complete FastAPI application that can be executed."""
+The code should be a complete, self-contained FastAPI application that can be executed with only the standard libraries listed above."""
 
         user_prompt = f"""API Name: {request.apiName}
 
