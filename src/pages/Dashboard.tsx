@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Trash2, ExternalLink, Copy, Activity, TrendingUp, Globe, X } from 'lucide-react';
+import { Trash2, ExternalLink, Copy, Activity, TrendingUp, Globe, X, List, ChevronDown, ChevronUp } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
@@ -8,6 +8,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../hooks/useToast';
 import { API } from '../lib/types';
+import { parseEndpointsFromCode, formatCurlExample, ParsedEndpoint } from '../lib/endpoints';
 
 export const Dashboard = () => {
   const [apis, setApis] = useState<API[]>([]);
@@ -20,6 +21,7 @@ export const Dashboard = () => {
   const [publishModalOpen, setPublishModalOpen] = useState(false);
   const [selectedApi, setSelectedApi] = useState<API | null>(null);
   const [publishLoading, setPublishLoading] = useState(false);
+  const [expandedApiId, setExpandedApiId] = useState<string | null>(null);
   const { profile } = useAuth();
   const { addToast } = useToast();
 
@@ -211,6 +213,56 @@ export const Dashboard = () => {
                           <strong>About:</strong> {api.about}
                         </p>
                       )}
+
+                      {api.code_snapshot && (() => {
+                        const endpoints = parseEndpointsFromCode(api.code_snapshot);
+                        return endpoints.length > 0 && (
+                          <div className="mb-3">
+                            <button
+                              onClick={() => setExpandedApiId(expandedApiId === api.id ? null : api.id)}
+                              className="flex items-center gap-2 text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
+                            >
+                              <List className="w-4 h-4" />
+                              {endpoints.length} Endpoint{endpoints.length !== 1 ? 's' : ''} Available
+                              {expandedApiId === api.id ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                            </button>
+
+                            {expandedApiId === api.id && (
+                              <motion.div
+                                initial={{ opacity: 0, height: 0 }}
+                                animate={{ opacity: 1, height: 'auto' }}
+                                exit={{ opacity: 0, height: 0 }}
+                                className="mt-3 space-y-2 pl-6 border-l-2 border-blue-200 dark:border-blue-800"
+                              >
+                                {endpoints.map((endpoint, idx) => (
+                                  <div key={idx} className="text-xs">
+                                    <div className="flex items-center gap-2 mb-1">
+                                      <span className={`px-2 py-0.5 font-semibold rounded ${
+                                        endpoint.method === 'GET' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
+                                        endpoint.method === 'POST' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
+                                        endpoint.method === 'PUT' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
+                                        endpoint.method === 'DELETE' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
+                                        'bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-400'
+                                      }`}>
+                                        {endpoint.method}
+                                      </span>
+                                      <code className="font-mono text-gray-900 dark:text-gray-100">
+                                        {endpoint.path}
+                                      </code>
+                                    </div>
+                                    {endpoint.summary && (
+                                      <p className="text-gray-600 dark:text-gray-400 ml-14">
+                                        {endpoint.summary}
+                                      </p>
+                                    )}
+                                  </div>
+                                ))}
+                              </motion.div>
+                            )}
+                          </div>
+                        );
+                      })()}
+
                       <div className="space-y-2">
                         <div>
                           <p className="text-xs text-gray-500 dark:text-gray-500 mb-1">Endpoint</p>

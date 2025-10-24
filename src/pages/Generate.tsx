@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Sparkles, Copy, Check, ExternalLink, Rocket, Code, Zap, Lightbulb } from 'lucide-react';
+import { Sparkles, Copy, Check, ExternalLink, Rocket, Code, Zap, Lightbulb, List } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Textarea } from '../components/ui/Textarea';
@@ -9,6 +9,7 @@ import { supabase } from '../lib/supabase';
 import { apiService } from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../hooks/useToast';
+import { parseEndpointsFromCode, formatCurlExample, ParsedEndpoint } from '../lib/endpoints';
 
 interface GeneratedAPI {
   id: string;
@@ -16,6 +17,7 @@ interface GeneratedAPI {
   endpoint_url: string;
   api_key: string;
   description: string;
+  endpoints?: ParsedEndpoint[];
 }
 
 export const Generate = () => {
@@ -128,12 +130,15 @@ export const Generate = () => {
         .update({ api_generation_count: profile.api_generation_count + 1 })
         .eq('id', profile.id);
 
+      const parsedEndpoints = parseEndpointsFromCode(codeData.code);
+
       setGeneratedAPI({
         id: data.id,
         name: apiName,
         endpoint_url: endpointUrl,
         api_key: apiKey,
         description: `Generated API: ${apiName}`,
+        endpoints: parsedEndpoints,
       });
 
       addToast('API generated and deployed successfully!', 'success');
@@ -405,17 +410,51 @@ export const Generate = () => {
                   </div>
                 </div>
 
-                <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
-                  <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                    Quick Start
-                  </h3>
-                  <div className="bg-gray-900 dark:bg-black rounded-lg p-4 overflow-x-auto">
-                    <pre className="text-sm text-gray-100">
-                      <code>{`curl -X GET "${generatedAPI.endpoint_url}" \\
-  -H "Authorization: Bearer ${generatedAPI.api_key}"`}</code>
-                    </pre>
+                {generatedAPI.endpoints && generatedAPI.endpoints.length > 0 && (
+                  <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+                    <div className="flex items-center gap-2 mb-3">
+                      <List className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                      <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                        Available Endpoints
+                      </h3>
+                    </div>
+                    <div className="space-y-4">
+                      {generatedAPI.endpoints.map((endpoint, idx) => (
+                        <div key={idx} className="border border-gray-200 dark:border-gray-700 rounded-lg p-3">
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className={`px-2 py-1 text-xs font-semibold rounded ${
+                              endpoint.method === 'GET' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
+                              endpoint.method === 'POST' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
+                              endpoint.method === 'PUT' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
+                              endpoint.method === 'DELETE' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
+                              'bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-400'
+                            }`}>
+                              {endpoint.method}
+                            </span>
+                            <code className="text-sm font-mono text-gray-900 dark:text-gray-100">
+                              {endpoint.path}
+                            </code>
+                          </div>
+                          {endpoint.summary && (
+                            <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                              {endpoint.summary}
+                            </p>
+                          )}
+                          <details className="mt-2">
+                            <summary className="text-xs text-blue-600 dark:text-blue-400 cursor-pointer hover:underline">
+                              Show example
+                            </summary>
+                            <div className="mt-2 bg-gray-900 dark:bg-black rounded p-3 overflow-x-auto">
+                              <pre className="text-xs text-gray-100">
+                                <code>{formatCurlExample(generatedAPI.endpoint_url, endpoint, generatedAPI.api_key)}</code>
+                              </pre>
+                            </div>
+                          </details>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
+                )}
 
                 <Button
                   variant="outline"
