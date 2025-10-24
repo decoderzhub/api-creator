@@ -26,8 +26,7 @@ async def deploy_api(request: DeployAPIRequest, user_id: str = Depends(verify_to
             raise HTTPException(status_code=404, detail="API not found")
 
         supabase.table("apis").update({
-            "status": "active",
-            "deployed_at": datetime.utcnow().isoformat()
+            "status": "active"
         }).eq("id", request.apiId).execute()
 
         return {
