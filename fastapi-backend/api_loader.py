@@ -51,6 +51,12 @@ class APIHandler:
             print(f"❌ Error loading API {self.api_id}: {str(e)}")
             raise
 
+    def get_app(self):
+        """Get the FastAPI app instance from the loaded module"""
+        if hasattr(self.module, 'app'):
+            return self.module.__dict__['app']
+        return None
+
     async def execute(
         self,
         method: str,
@@ -61,20 +67,22 @@ class APIHandler:
     ) -> Dict:
         """
         Execute the user's API code
-        This is a simplified version - actual implementation would need
-        to properly route to the FastAPI app defined in the user's code
+        Returns info about the loaded API
         """
         try:
-            # For now, return a simple response
-            # In production, this would actually execute the user's FastAPI routes
-            return {
-                "message": f"API {self.metadata.get('name')} executed successfully",
-                "api_id": self.api_id,
-                "method": method,
-                "path": path,
-                "query_params": query_params,
-                "note": "User API code loaded and ready. Full execution requires FastAPI sub-app mounting."
-            }
+            app = self.get_app()
+            if app:
+                return {
+                    "message": f"API {self.metadata.get('name')} is loaded",
+                    "api_id": self.api_id,
+                    "routes": [route.path for route in app.routes if hasattr(route, 'path')],
+                    "note": "Use the API routes directly, e.g., /{api_id}/weather/london"
+                }
+            else:
+                return {
+                    "error": "FastAPI app not found in generated code",
+                    "note": "The generated code must define an 'app' variable with a FastAPI instance"
+                }
 
         except Exception as e:
             print(f"Error executing API {self.api_id}: {str(e)}")

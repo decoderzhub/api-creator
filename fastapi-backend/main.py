@@ -155,19 +155,33 @@ async def proxy_to_user_api(
             )
 
     try:
-        # Execute the user's API
+        # Get the user's FastAPI app
+        user_app = api_handler.get_app()
+
+        if not user_app:
+            return JSONResponse(
+                status_code=503,
+                content={"error": "User API app not properly configured"}
+            )
+
+        # Forward the request to the user's app
+        from starlette.testclient import TestClient
+        client = TestClient(user_app)
+
+        # Prepare the request
+        url = f"/{path}" if path else "/"
+        if request.query_params:
+            url += f"?{request.query_params}"
+
+        # Get request body if present
         body = None
         if request.method in ["POST", "PUT", "PATCH"]:
-            try:
-                body = await request.json()
-            except:
-                body = await request.body()
+            body = await request.body()
 
-        result = await api_handler.execute(
-            method=request.method,
-            path=path,
-            query_params=dict(request.query_params),
-            body=body,
+        # Make the request to the user's app
+        response = getattr(client, request.method.lower())(
+            url,
+            content=body,
             headers=dict(request.headers)
         )
 
@@ -176,12 +190,15 @@ async def proxy_to_user_api(
         await log_api_usage(
             api_id=api_id,
             user_id=api_metadata.get("user_id"),
-            status_code=200,
+            status_code=response.status_code,
             response_time_ms=int(response_time),
-            request_size_bytes=len(await request.body()) if request.method in ["POST", "PUT", "PATCH"] else 0
+            request_size_bytes=len(body) if body else 0
         )
 
-        return JSONResponse(content=result)
+        return JSONResponse(
+            content=response.json() if response.headers.get("content-type") == "application/json" else {"response": response.text},
+            status_code=response.status_code
+        )
 
     except Exception as e:
         print(f"Error executing API {api_id}: {str(e)}")
