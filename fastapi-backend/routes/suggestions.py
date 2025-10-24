@@ -20,6 +20,11 @@ class SuggestPromptsRequest(BaseModel):
     partialPrompt: str
 
 
+class SuggestAboutRequest(BaseModel):
+    apiName: str
+    partialPrompt: str
+
+
 @router.post("/suggest-prompts")
 async def suggest_prompts(request: SuggestPromptsRequest, user_id: str = Depends(verify_token)):
     """Generate AI-powered prompt suggestions using Anthropic Claude"""
@@ -70,6 +75,81 @@ Suggest 3 complete API descriptions:"""
     except Exception as e:
         print(f"Anthropic API error: {str(e)}")
         return get_fallback_suggestions(request.apiName, request.partialPrompt)
+
+
+@router.post("/suggest-about")
+async def suggest_about(request: SuggestAboutRequest, user_id: str = Depends(verify_token)):
+    """Generate AI-powered about section suggestions for marketplace"""
+    try:
+        if not ANTHROPIC_API_KEY:
+            return get_fallback_about_suggestions(request.apiName, request.partialPrompt)
+
+        client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+
+        system_prompt = """You are writing marketplace descriptions for APIs. Given an API name and description, suggest 3 concise "about" descriptions that:
+1. Are 1-2 sentences summarizing what the API does
+2. Are user-friendly and appealing for a marketplace
+3. Highlight key features and use cases
+4. Are compelling for potential users
+
+Return ONLY a JSON array of 3 strings, nothing else. Example format:
+["about 1", "about 2", "about 3"]"""
+
+        user_prompt = f"""API Name: {request.apiName or 'Unnamed API'}
+API Description: {request.partialPrompt or 'No description yet'}
+
+Suggest 3 marketplace-ready "about" descriptions:"""
+
+        message = client.messages.create(
+            model="claude-3-5-sonnet-20241022",
+            max_tokens=500,
+            messages=[
+                {"role": "user", "content": f"{system_prompt}\n\n{user_prompt}"}
+            ]
+        )
+
+        content = message.content[0].text.strip()
+
+        try:
+            import json
+            suggestions = json.loads(content)
+        except:
+            import re
+            lines = content.split('\n')
+            suggestions = [re.sub(r'^[0-9.\-*]\s*', '', line.strip().strip('"').strip("'")) for line in lines if line.strip()][:3]
+
+        if not suggestions or len(suggestions) == 0:
+            return get_fallback_about_suggestions(request.apiName, request.partialPrompt)
+
+        return {"suggestions": suggestions[:3]}
+
+    except Exception as e:
+        print(f"Anthropic API error: {str(e)}")
+        return get_fallback_about_suggestions(request.apiName, request.partialPrompt)
+
+
+def get_fallback_about_suggestions(api_name: str, partial_prompt: str) -> Dict[str, List[str]]:
+    """Fallback about suggestions when AI is unavailable"""
+    context = (api_name + ' ' + partial_prompt).lower()
+
+    if 'weather' in context:
+        return {"suggestions": [
+            'Get real-time weather data and forecasts for any city worldwide. Perfect for building weather apps and dashboards.',
+            'Send automated weather alerts based on temperature, conditions, or storm warnings. Ideal for agricultural and logistics applications.',
+            'Access historical weather data and climate trends for data analysis and research projects.',
+        ]}
+    elif 'notification' in context or 'alert' in context:
+        return {"suggestions": [
+            'Send notifications across email, SMS, and push channels with template support and delivery tracking.',
+            'Manage notification preferences and subscriptions with granular user controls and GDPR compliance.',
+            'Process webhooks and trigger smart notifications based on custom rules and conditions.',
+        ]}
+    else:
+        return {"suggestions": [
+            'A production-ready API with authentication, rate limiting, and comprehensive error handling.',
+            'Build scalable applications with this fully-featured API supporting real-time updates and webhooks.',
+            'Enterprise-grade API with detailed analytics, monitoring, and automatic documentation.',
+        ]}
 
 
 def get_fallback_suggestions(api_name: str, partial_prompt: str) -> Dict[str, List[str]]:

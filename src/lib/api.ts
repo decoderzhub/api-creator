@@ -196,4 +196,20 @@ export const apiService = {
 
     return response.json();
   },
+
+  getSuggestedAbout: async (apiName: string, partialPrompt: string) => {
+    const headers = await getAuthHeaders();
+    const response = await fetch(`${FASTAPI_BACKEND_URL}/api/suggest-about`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ apiName, partialPrompt }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ detail: 'Failed to get about suggestions' }));
+      throw new Error(error.detail || 'Failed to get about suggestions');
+    }
+
+    return response.json();
+  },
 };

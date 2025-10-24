@@ -14,11 +14,13 @@ export interface API {
   name: string;
   prompt: string;
   description?: string;
+  about?: string;
   endpoint_url: string;
   api_key: string;
   status: 'active' | 'paused' | 'failed';
   usage_count: number;
   code_snapshot?: string;
+  is_published?: boolean;
   created_at: string;
   updated_at: string;
 }

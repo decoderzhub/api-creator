@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
-import { Trash2, ExternalLink, Copy, Activity, TrendingUp } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Trash2, ExternalLink, Copy, Activity, TrendingUp, Globe, X } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
@@ -17,6 +17,9 @@ export const Dashboard = () => {
     totalCalls: 0,
     activeAPIs: 0,
   });
+  const [publishModalOpen, setPublishModalOpen] = useState(false);
+  const [selectedApi, setSelectedApi] = useState<API | null>(null);
+  const [publishLoading, setPublishLoading] = useState(false);
   const { profile } = useAuth();
   const { addToast } = useToast();
 
@@ -65,6 +68,47 @@ export const Dashboard = () => {
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     addToast('Copied to clipboard!', 'success');
+  };
+
+  const handlePublishClick = (api: API) => {
+    setSelectedApi(api);
+    setPublishModalOpen(true);
+  };
+
+  const handlePublishToMarketplace = async () => {
+    if (!selectedApi) return;
+
+    if (!selectedApi.about || selectedApi.about.trim() === '') {
+      addToast('Please add an about section to your API before publishing', 'error');
+      return;
+    }
+
+    setPublishLoading(true);
+    try {
+      const { error: marketplaceError } = await supabase.from('marketplace').insert({
+        api_id: selectedApi.id,
+        title: selectedApi.name,
+        description: selectedApi.about,
+        price_per_call: 0,
+        is_public: true,
+      });
+
+      if (marketplaceError) throw marketplaceError;
+
+      await supabase
+        .from('apis')
+        .update({ is_published: true })
+        .eq('id', selectedApi.id);
+
+      addToast('API published to marketplace successfully!', 'success');
+      setPublishModalOpen(false);
+      setSelectedApi(null);
+      loadAPIs();
+    } catch (err: any) {
+      addToast(err.message || 'Failed to publish API', 'error');
+    } finally {
+      setPublishLoading(false);
+    }
   };
 
   return (
@@ -162,9 +206,9 @@ export const Dashboard = () => {
                           {api.status}
                         </Badge>
                       </div>
-                      {api.description && (
+                      {api.about && (
                         <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                          {api.description}
+                          <strong>About:</strong> {api.about}
                         </p>
                       )}
                       <div className="space-y-2">
@@ -192,13 +236,25 @@ export const Dashboard = () => {
                         </div>
                       </div>
                     </div>
-                    <Button
-                      size="sm"
-                      variant="danger"
-                      onClick={() => deleteAPI(api.id)}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
+                    <div className="flex gap-2">
+                      {!api.is_published && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handlePublishClick(api)}
+                        >
+                          <Globe className="w-4 h-4 mr-1" />
+                          Publish
+                        </Button>
+                      )}
+                      <Button
+                        size="sm"
+                        variant="danger"
+                        onClick={() => deleteAPI(api.id)}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
                   </div>
                   <div className="flex items-center gap-6 text-sm text-gray-600 dark:text-gray-400">
                     <span>Calls: {api.usage_count.toLocaleString()}</span>
@@ -210,6 +266,92 @@ export const Dashboard = () => {
           )}
         </CardContent>
       </Card>
+
+      <AnimatePresence>
+        {publishModalOpen && selectedApi && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+            onClick={() => setPublishModalOpen(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-lg w-full p-6"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-start justify-between mb-4">
+                <div>
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-1">
+                    Publish to Marketplace
+                  </h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    Share your API with the community
+                  </p>
+                </div>
+                <button
+                  onClick={() => setPublishModalOpen(false)}
+                  className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="space-y-4 mb-6">
+                <div>
+                  <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                    API Name
+                  </h4>
+                  <p className="text-gray-900 dark:text-gray-100">{selectedApi.name}</p>
+                </div>
+
+                <div>
+                  <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                    About
+                  </h4>
+                  <p className="text-gray-900 dark:text-gray-100">
+                    {selectedApi.about || 'No about section provided'}
+                  </p>
+                  {!selectedApi.about && (
+                    <p className="text-sm text-red-600 dark:text-red-400 mt-1">
+                      You need to add an about section before publishing. Please edit your API.
+                    </p>
+                  )}
+                </div>
+
+                <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                  <p className="text-sm text-gray-700 dark:text-gray-300">
+                    <strong>Note:</strong> Once published, your API will be visible to all users in the marketplace. You can unpublish it at any time.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex gap-3">
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => setPublishModalOpen(false)}
+                  disabled={publishLoading}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  className="flex-1"
+                  onClick={handlePublishToMarketplace}
+                  isLoading={publishLoading}
+                  disabled={!selectedApi.about || publishLoading}
+                >
+                  <Globe className="w-4 h-4 mr-2" />
+                  Publish
+                </Button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

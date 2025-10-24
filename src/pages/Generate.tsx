@@ -18,91 +18,71 @@ interface GeneratedAPI {
   description: string;
 }
 
-const promptSuggestions: Record<string, string[]> = {
-  'weather': [
-    'An API that fetches real-time weather data for any city with temperature, humidity, and forecast',
-    'An API that sends weather alerts when conditions change, with email and SMS notifications',
-    'An API that provides historical weather data and trends for agricultural planning',
-  ],
-  'notification': [
-    'An API that sends SMS alerts when specific events occur, with rate limiting and authentication',
-    'An API that manages push notifications across multiple platforms with scheduling support',
-    'An API that delivers email notifications with templates and tracking capabilities',
-  ],
-  'payment': [
-    'An API that processes credit card payments securely with fraud detection and webhooks',
-    'An API that handles subscription billing with automatic renewals and invoice generation',
-    'An API that manages refunds and disputes with detailed transaction logging',
-  ],
-  'user': [
-    'An API for user authentication with JWT tokens, password reset, and email verification',
-    'An API that manages user profiles with avatar upload, preferences, and activity logs',
-    'An API for user registration with social login integration and role-based access',
-  ],
-  'data': [
-    'An API that aggregates data from multiple sources with caching and transformation',
-    'An API that validates and sanitizes incoming data with custom rules and error handling',
-    'An API that exports data in various formats like CSV, JSON, and XML',
-  ],
-  'image': [
-    'An API that resizes and optimizes images with automatic format conversion and CDN integration',
-    'An API that applies filters and watermarks to images with batch processing support',
-    'An API that generates thumbnails and previews with lazy loading capabilities',
-  ],
-  'email': [
-    'An API that sends transactional emails with templates, attachments, and delivery tracking',
-    'An API that manages email campaigns with scheduling, segmentation, and analytics',
-    'An API that validates email addresses and checks for spam traps',
-  ],
-  'webhook': [
-    'An API that receives and processes webhooks from external services with retry logic',
-    'An API that dispatches webhooks to multiple endpoints with payload transformation',
-    'An API that validates webhook signatures and logs all incoming requests',
-  ],
-  'default': [
-    'An API with CRUD operations for managing resources with pagination and filtering',
-    'An API that provides real-time updates using WebSockets with authentication',
-    'An API with rate limiting, caching, and comprehensive error handling',
-  ]
-};
-
-function getPromptSuggestions(apiName: string, currentPrompt: string): string[] {
-  const words = currentPrompt.trim().split(/\s+/);
-  if (words.length < 3) return [];
-
-  const searchTerms = apiName.toLowerCase() + ' ' + currentPrompt.toLowerCase();
-
-  for (const [key, suggestions] of Object.entries(promptSuggestions)) {
-    if (searchTerms.includes(key)) {
-      return suggestions;
-    }
-  }
-
-  return promptSuggestions.default;
-}
-
 export const Generate = () => {
   const [prompt, setPrompt] = useState('');
   const [apiName, setApiName] = useState('');
+  const [about, setAbout] = useState('');
   const [loading, setLoading] = useState(false);
   const [generatedAPI, setGeneratedAPI] = useState<GeneratedAPI | null>(null);
   const [copiedKey, setCopiedKey] = useState(false);
-  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [promptSuggestions, setPromptSuggestions] = useState<string[]>([]);
+  const [aboutSuggestions, setAboutSuggestions] = useState<string[]>([]);
+  const [showPromptSuggestions, setShowPromptSuggestions] = useState(false);
+  const [showAboutSuggestions, setShowAboutSuggestions] = useState(false);
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   const { profile } = useAuth();
   const { addToast } = useToast();
 
-  const suggestions = useMemo(() => {
-    return getPromptSuggestions(apiName, prompt);
-  }, [apiName, prompt]);
-
   useEffect(() => {
     const words = prompt.trim().split(/\s+/);
-    setShowSuggestions(words.length >= 3 && suggestions.length > 0);
-  }, [prompt, suggestions]);
+    if (words.length >= 3) {
+      fetchPromptSuggestions();
+    } else {
+      setShowPromptSuggestions(false);
+      setPromptSuggestions([]);
+    }
+  }, [prompt, apiName]);
+
+  useEffect(() => {
+    const words = about.trim().split(/\s+/);
+    if (words.length >= 3 && prompt.trim()) {
+      fetchAboutSuggestions();
+    } else {
+      setShowAboutSuggestions(false);
+      setAboutSuggestions([]);
+    }
+  }, [about, apiName, prompt]);
+
+  const fetchPromptSuggestions = async () => {
+    if (!apiName.trim() && !prompt.trim()) return;
+
+    setLoadingSuggestions(true);
+    try {
+      const response = await apiService.getSuggestedPrompts(apiName, prompt);
+      setPromptSuggestions(response.suggestions || []);
+      setShowPromptSuggestions(response.suggestions?.length > 0);
+    } catch (error) {
+      console.error('Failed to fetch prompt suggestions:', error);
+    } finally {
+      setLoadingSuggestions(false);
+    }
+  };
+
+  const fetchAboutSuggestions = async () => {
+    if (!prompt.trim()) return;
+
+    try {
+      const response = await apiService.getSuggestedAbout(apiName, prompt);
+      setAboutSuggestions(response.suggestions || []);
+      setShowAboutSuggestions(response.suggestions?.length > 0);
+    } catch (error) {
+      console.error('Failed to fetch about suggestions:', error);
+    }
+  };
 
   const handleGenerate = async () => {
-    if (!prompt.trim() || !apiName.trim()) {
-      addToast('Please provide both API name and description', 'error');
+    if (!prompt.trim() || !apiName.trim() || !about.trim()) {
+      addToast('Please provide API name, description, and about section', 'error');
       return;
     }
 
@@ -132,6 +112,7 @@ export const Generate = () => {
         name: apiName,
         prompt: prompt,
         description: `Generated API: ${apiName}`,
+        about: about,
         endpoint_url: endpointUrl,
         api_key: apiKey,
         status: 'active',
@@ -158,6 +139,7 @@ export const Generate = () => {
       addToast('API generated and deployed successfully!', 'success');
       setPrompt('');
       setApiName('');
+      setAbout('');
     } catch (err: any) {
       addToast(err.message || 'Failed to generate API', 'error');
     } finally {
@@ -172,9 +154,14 @@ export const Generate = () => {
     addToast('Copied to clipboard!', 'success');
   };
 
-  const applySuggestion = (suggestion: string) => {
+  const applyPromptSuggestion = (suggestion: string) => {
     setPrompt(suggestion);
-    setShowSuggestions(false);
+    setShowPromptSuggestions(false);
+  };
+
+  const applyAboutSuggestion = (suggestion: string) => {
+    setAbout(suggestion);
+    setShowAboutSuggestions(false);
   };
 
   return (
@@ -240,11 +227,11 @@ export const Generate = () => {
                   placeholder="Example: An API that sends SMS alerts when specific events occur, with rate limiting and authentication. It should accept webhook payloads, validate them, and trigger notifications to users..."
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
-                  rows={10}
+                  rows={8}
                   className="text-base"
                 />
 
-                {showSuggestions && (
+                {showPromptSuggestions && promptSuggestions.length > 0 && (
                   <motion.div
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -254,20 +241,63 @@ export const Generate = () => {
                     <div className="flex items-center gap-2 mb-3">
                       <Lightbulb className="w-5 h-5 text-yellow-600 dark:text-yellow-500" />
                       <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                        Suggested Prompts
+                        AI Suggested Prompts
                       </h4>
                     </div>
                     <div className="space-y-2">
-                      {suggestions.slice(0, 3).map((suggestion, index) => (
+                      {promptSuggestions.slice(0, 3).map((suggestion, index) => (
                         <motion.button
                           key={index}
                           initial={{ opacity: 0, x: -10 }}
                           animate={{ opacity: 1, x: 0 }}
                           transition={{ delay: index * 0.1 }}
-                          onClick={() => applySuggestion(suggestion)}
+                          onClick={() => applyPromptSuggestion(suggestion)}
                           className="w-full text-left p-3 bg-white dark:bg-gray-900 hover:bg-blue-50 dark:hover:bg-blue-950/50 border border-gray-200 dark:border-gray-700 rounded-lg transition-all duration-200 group"
                         >
                           <p className="text-sm text-gray-700 dark:text-gray-300 group-hover:text-blue-700 dark:group-hover:text-blue-400">
+                            {suggestion}
+                          </p>
+                        </motion.button>
+                      ))}
+                    </div>
+                  </motion.div>
+                )}
+              </div>
+
+              <div className="relative">
+                <Textarea
+                  label="About (for marketplace)"
+                  placeholder="A brief description of what your API does for the community..."
+                  value={about}
+                  onChange={(e) => setAbout(e.target.value)}
+                  rows={3}
+                  className="text-base"
+                />
+
+                {showAboutSuggestions && aboutSuggestions.length > 0 && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    className="mt-4 p-4 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/50 dark:to-emerald-950/50 border border-green-200 dark:border-green-800 rounded-lg space-y-3"
+                  >
+                    <div className="flex items-center gap-2 mb-3">
+                      <Lightbulb className="w-5 h-5 text-green-600 dark:text-green-500" />
+                      <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                        AI Suggested About Descriptions
+                      </h4>
+                    </div>
+                    <div className="space-y-2">
+                      {aboutSuggestions.slice(0, 3).map((suggestion, index) => (
+                        <motion.button
+                          key={index}
+                          initial={{ opacity: 0, x: -10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: index * 0.1 }}
+                          onClick={() => applyAboutSuggestion(suggestion)}
+                          className="w-full text-left p-3 bg-white dark:bg-gray-900 hover:bg-green-50 dark:hover:bg-green-950/50 border border-gray-200 dark:border-gray-700 rounded-lg transition-all duration-200 group"
+                        >
+                          <p className="text-sm text-gray-700 dark:text-gray-300 group-hover:text-green-700 dark:group-hover:text-green-400">
                             {suggestion}
                           </p>
                         </motion.button>
@@ -281,7 +311,7 @@ export const Generate = () => {
                 <div className="flex items-start gap-3">
                   <Rocket className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
                   <div className="text-sm text-gray-700 dark:text-gray-300">
-                    <strong>Pro tip:</strong> Type at least 3-4 words to see AI-powered prompt suggestions tailored to your API.
+                    <strong>Pro tip:</strong> Type at least 3 words in each field to see AI-powered suggestions from Claude.
                   </div>
                 </div>
               </div>
@@ -290,7 +320,7 @@ export const Generate = () => {
                 onClick={handleGenerate}
                 isLoading={loading}
                 className="w-full text-lg py-6 shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30"
-                disabled={!prompt.trim() || !apiName.trim()}
+                disabled={!prompt.trim() || !apiName.trim() || !about.trim()}
               >
                 {loading ? (
                   <>
