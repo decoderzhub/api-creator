@@ -49,9 +49,17 @@ Requirements:
    - json
    - random
    - uuid
+   - os (for environment variables)
    DO NOT import any other external libraries like aiohttp, requests, passlib, bcrypt, etc.
 9. For any data storage, use simple in-memory structures (dicts, lists) as this is a demo
 10. Do NOT include authentication or rate limiting - keep it simple
+11. SPECIAL: For sound/audio APIs, integrate Freesound.org API:
+    - Use httpx to call Freesound API: https://freesound.org/apiv2/search/text/
+    - Get API key from environment: FREESOUND_API_KEY = os.getenv("FREESOUND_API_KEY", "")
+    - Add header: "Authorization": f"Token {FREESOUND_API_KEY}"
+    - Search with query parameter: ?query=ocean+waves&fields=id,name,description,previews,duration
+    - Return results with preview URLs that can be played in browser
+    - Include preview_hq_mp3 URL from previews object for playback
 
 The code should be a complete, self-contained FastAPI application that can be executed with only the standard libraries listed above."""
 

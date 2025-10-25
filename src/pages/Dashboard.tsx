@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Trash2, ExternalLink, Copy, Activity, TrendingUp, Globe, X, List, ChevronDown, ChevronUp, Edit2, Check, Code, Zap } from 'lucide-react';
+import { Trash2, ExternalLink, Copy, Activity, TrendingUp, Globe, X, List, ChevronDown, ChevronUp, Edit2, Check, Code, Zap, Play } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { CodeViewer } from '../components/ui/CodeViewer';
+import { AudioPlayer } from '../components/ui/AudioPlayer';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../hooks/useToast';
@@ -38,6 +39,9 @@ export const Dashboard = () => {
   const [codeModalOpen, setCodeModalOpen] = useState(false);
   const [viewingCode, setViewingCode] = useState<{ name: string; code: string } | null>(null);
   const [codeCopied, setCodeCopied] = useState(false);
+  const [testingApiId, setTestingApiId] = useState<string | null>(null);
+  const [testResults, setTestResults] = useState<any>(null);
+  const [testLoading, setTestLoading] = useState(false);
   const { profile } = useAuth();
   const { addToast } = useToast();
 
@@ -193,6 +197,44 @@ export const Dashboard = () => {
       addToast(err.message || 'Failed to publish API', 'error');
     } finally {
       setPublishLoading(false);
+    }
+  };
+
+  const testAPI = async (api: API, endpoint: ParsedEndpoint) => {
+    setTestLoading(true);
+    setTestingApiId(api.id);
+    setTestResults(null);
+
+    try {
+      let url = api.endpoint_url + endpoint.path;
+
+      const queryParams = endpoint.parameters
+        .filter(p => p.type === 'query' && p.required)
+        .map(p => `${p.name}=${p.name === 'duration' ? '3.0' : 'ambient'}`)
+        .join('&');
+
+      if (queryParams) {
+        url += `?${queryParams}`;
+      }
+
+      const options: RequestInit = {
+        method: endpoint.method,
+        headers: {
+          'Authorization': `Bearer ${api.api_key}`,
+          'Content-Type': 'application/json',
+        },
+      };
+
+      const response = await fetch(url, options);
+      const data = await response.json();
+
+      setTestResults(data);
+      addToast('API test completed!', 'success');
+    } catch (error) {
+      console.error('Error testing API:', error);
+      addToast('Failed to test API', 'error');
+    } finally {
+      setTestLoading(false);
     }
   };
 
@@ -443,20 +485,54 @@ export const Dashboard = () => {
                                         </div>
                                       )}
 
-                                      <div className="mt-2 bg-gray-900 dark:bg-black rounded p-2 relative group">
-                                        <pre className="text-xs text-gray-100 overflow-x-auto">
-                                          <code>{curlExample}</code>
-                                        </pre>
-                                        <button
-                                          onClick={() => {
-                                            navigator.clipboard.writeText(curlExample);
-                                            addToast('Copied to clipboard!', 'success');
-                                          }}
-                                          className="absolute top-2 right-2 p-1 bg-gray-800 hover:bg-gray-700 rounded opacity-0 group-hover:opacity-100 transition-opacity"
-                                          title="Copy to clipboard"
+                                      <div className="space-y-2">
+                                        <div className="bg-gray-900 dark:bg-black rounded p-2 relative group">
+                                          <pre className="text-xs text-gray-100 overflow-x-auto">
+                                            <code>{curlExample}</code>
+                                          </pre>
+                                          <button
+                                            onClick={() => {
+                                              navigator.clipboard.writeText(curlExample);
+                                              addToast('Copied to clipboard!', 'success');
+                                            }}
+                                            className="absolute top-2 right-2 p-1 bg-gray-800 hover:bg-gray-700 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                                            title="Copy to clipboard"
+                                          >
+                                            <Copy className="w-3 h-3 text-gray-300" />
+                                          </button>
+                                        </div>
+
+                                        <Button
+                                          size="sm"
+                                          onClick={() => testAPI(api, endpoint)}
+                                          disabled={testLoading && testingApiId === api.id}
+                                          className="w-full"
                                         >
-                                          <Copy className="w-3 h-3 text-gray-300" />
-                                        </button>
+                                          <Play className="w-3 h-3 mr-2" />
+                                          {testLoading && testingApiId === api.id ? 'Testing...' : 'Test Endpoint'}
+                                        </Button>
+
+                                        {testingApiId === api.id && testResults && (
+                                          <div className="space-y-2">
+                                            {testResults.results && Array.isArray(testResults.results) ? (
+                                              testResults.results.slice(0, 3).map((sound: any, soundIdx: number) => (
+                                                <AudioPlayer
+                                                  key={soundIdx}
+                                                  src={sound.previews?.preview_hq_mp3 || sound.preview_url}
+                                                  title={sound.name}
+                                                  description={sound.description}
+                                                  duration={sound.duration}
+                                                />
+                                              ))
+                                            ) : (
+                                              <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded text-xs">
+                                                <pre className="text-gray-700 dark:text-gray-300 overflow-x-auto">
+                                                  {JSON.stringify(testResults, null, 2)}
+                                                </pre>
+                                              </div>
+                                            )}
+                                          </div>
+                                        )}
                                       </div>
                                     </div>
                                   );
