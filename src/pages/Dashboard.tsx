@@ -4,6 +4,7 @@ import { Trash2, ExternalLink, Copy, Activity, TrendingUp, Globe, X, List, Chevr
 import { Card, CardContent, CardHeader } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
+import { CodeViewer } from '../components/ui/CodeViewer';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../hooks/useToast';
@@ -584,11 +585,7 @@ export const Dashboard = () => {
               </div>
 
               <div className="flex-1 overflow-auto p-6">
-                <div className="bg-gray-900 dark:bg-black rounded-lg p-4 overflow-x-auto">
-                  <pre className="text-sm text-gray-100 font-mono leading-relaxed">
-                    <code>{viewingCode.code}</code>
-                  </pre>
-                </div>
+                <CodeViewer code={viewingCode.code} language="python" />
               </div>
             </motion.div>
           </motion.div>
