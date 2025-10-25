@@ -13,11 +13,13 @@ from typing import Optional
 from api_loader import APILoader
 from auth import verify_api_key, log_api_usage
 from config import get_settings
+from rate_limiter import check_rate_limit, increment_rate_limit
 from routes.generation import router as generation_router
 from routes.deployment import router as deployment_router
 from routes.analytics import router as analytics_router
 from routes.marketplace import router as marketplace_router
 from routes.suggestions import router as suggestions_router
+from routes.rate_limit import router as rate_limit_router
 
 settings = get_settings()
 
@@ -32,6 +34,7 @@ app.include_router(deployment_router, prefix="/api", tags=["Deployment"])
 app.include_router(analytics_router, prefix="/api/api-analytics", tags=["Analytics"])
 app.include_router(marketplace_router, prefix="/api/marketplace", tags=["Marketplace"])
 app.include_router(suggestions_router, prefix="/api", tags=["AI Suggestions"])
+app.include_router(rate_limit_router, prefix="/api", tags=["Rate Limiting"])
 
 app.add_middleware(
     CORSMiddleware,
@@ -137,6 +140,26 @@ async def proxy_to_user_api(
             content={"error": "Invalid API key or API not found"}
         )
 
+    # Check rate limit
+    user_id = api_metadata.get("user_id")
+    user_plan = api_metadata.get("user_plan", "free")
+    is_allowed, rate_limit_info = await check_rate_limit(user_id, user_plan)
+
+    if not is_allowed:
+        return JSONResponse(
+            status_code=429,
+            content={
+                "error": "Rate limit exceeded",
+                "limit": rate_limit_info["limit"],
+                "reset": rate_limit_info["reset"]
+            },
+            headers={
+                "X-RateLimit-Limit": str(rate_limit_info["limit"]),
+                "X-RateLimit-Remaining": str(rate_limit_info["remaining"]),
+                "X-RateLimit-Reset": str(rate_limit_info["reset"])
+            }
+        )
+
     # Check if API is active
     if api_metadata.get("status") != "active":
         return JSONResponse(
@@ -189,6 +212,9 @@ async def proxy_to_user_api(
         else:
             response = method_fn(url, headers=dict(request.headers))
 
+        # Increment rate limit counter
+        await increment_rate_limit(user_id)
+
         # Log usage
         response_time = (datetime.utcnow() - start_time).total_seconds() * 1000
         await log_api_usage(
@@ -201,7 +227,12 @@ async def proxy_to_user_api(
 
         return JSONResponse(
             content=response.json() if response.headers.get("content-type") == "application/json" else {"response": response.text},
-            status_code=response.status_code
+            status_code=response.status_code,
+            headers={
+                "X-RateLimit-Limit": str(rate_limit_info["limit"]),
+                "X-RateLimit-Remaining": str(max(0, rate_limit_info["remaining"] - 1)),
+                "X-RateLimit-Reset": str(rate_limit_info["reset"])
+            }
         )
 
     except Exception as e:

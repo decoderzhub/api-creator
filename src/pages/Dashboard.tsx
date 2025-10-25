@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Trash2, ExternalLink, Copy, Activity, TrendingUp, Globe, X, List, ChevronDown, ChevronUp, Edit2, Check, Code } from 'lucide-react';
+import { Trash2, ExternalLink, Copy, Activity, TrendingUp, Globe, X, List, ChevronDown, ChevronUp, Edit2, Check, Code, Zap } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
@@ -10,6 +10,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../hooks/useToast';
 import { API } from '../lib/types';
 import { parseEndpointsFromCode, formatCurlExample, ParsedEndpoint } from '../lib/endpoints';
+import { apiService } from '../lib/api';
 
 export const Dashboard = () => {
   const [apis, setApis] = useState<API[]>([]);
@@ -19,6 +20,13 @@ export const Dashboard = () => {
     totalCalls: 0,
     activeAPIs: 0,
   });
+  const [rateLimitStatus, setRateLimitStatus] = useState<{
+    limit: number;
+    used: number;
+    remaining: number;
+    reset: number;
+    plan: string;
+  } | null>(null);
   const [publishModalOpen, setPublishModalOpen] = useState(false);
   const [selectedApi, setSelectedApi] = useState<API | null>(null);
   const [publishLoading, setPublishLoading] = useState(false);
@@ -35,6 +43,7 @@ export const Dashboard = () => {
 
   useEffect(() => {
     loadAPIs();
+    loadRateLimitStatus();
   }, [profile]);
 
   const loadAPIs = async () => {
@@ -60,6 +69,19 @@ export const Dashboard = () => {
       addToast(err.message || 'Failed to load APIs', 'error');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadRateLimitStatus = async () => {
+    if (!profile) return;
+
+    try {
+      const response = await apiService.getRateLimitStatus(profile.id);
+      if (response.success) {
+        setRateLimitStatus(response.data);
+      }
+    } catch (err: any) {
+      console.error('Failed to load rate limit status:', err);
     }
   };
 
@@ -220,6 +242,37 @@ export const Dashboard = () => {
               </div>
               <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/30 rounded-lg flex items-center justify-center">
                 <ExternalLink className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Rate Limit</p>
+                {rateLimitStatus ? (
+                  <>
+                    <p className="text-3xl font-bold text-gray-900 dark:text-gray-100">
+                      {rateLimitStatus.remaining}
+                      <span className="text-lg text-gray-500 dark:text-gray-400">/{rateLimitStatus.limit}</span>
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      {rateLimitStatus.used} used • {rateLimitStatus.plan} plan
+                    </p>
+                    {rateLimitStatus.remaining < rateLimitStatus.limit * 0.2 && (
+                      <p className="text-xs text-orange-600 dark:text-orange-400 mt-1">
+                        Running low on requests
+                      </p>
+                    )}
+                  </>
+                ) : (
+                  <p className="text-3xl font-bold text-gray-900 dark:text-gray-100">-</p>
+                )}
+              </div>
+              <div className="w-12 h-12 bg-orange-100 dark:bg-orange-900/30 rounded-lg flex items-center justify-center">
+                <Zap className="w-6 h-6 text-orange-600 dark:text-orange-400" />
               </div>
             </div>
           </CardContent>

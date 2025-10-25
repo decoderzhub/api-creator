@@ -4,6 +4,7 @@ Authentication and authorization utilities
 from typing import Optional, Dict
 from supabase import create_client, Client
 from config import get_settings
+from rate_limiter import get_rate_limit_status
 
 settings = get_settings()
 supabase: Client = create_client(settings.supabase_url, settings.supabase_service_role_key)
@@ -11,13 +12,20 @@ supabase: Client = create_client(settings.supabase_url, settings.supabase_servic
 
 async def verify_api_key(api_id: str, api_key: str) -> Optional[Dict]:
     """
-    Verify API key and return API metadata
+    Verify API key and return API metadata including user subscription tier
     """
     try:
-        response = supabase.table("apis").select("*").eq("id", api_id).eq("api_key", api_key).execute()
+        response = supabase.table("apis")\
+            .select("*, users!inner(plan)")\
+            .eq("id", api_id)\
+            .eq("api_key", api_key)\
+            .execute()
 
         if response.data and len(response.data) > 0:
-            return response.data[0]
+            api_data = response.data[0]
+            # Flatten user plan into api metadata
+            api_data['user_plan'] = api_data.get('users', {}).get('plan', 'free')
+            return api_data
         return None
     except Exception as e:
         print(f"Error verifying API key: {e}")
@@ -52,3 +60,24 @@ async def log_api_usage(
 
     except Exception as e:
         print(f"Error logging API usage: {e}")
+
+
+async def get_user_rate_limit_status(user_id: str) -> Dict:
+    """
+    Get the current rate limit status for a user
+    """
+    try:
+        # Get user's plan
+        user_response = supabase.table("users").select("plan").eq("id", user_id).single().execute()
+        if not user_response.data:
+            return {"error": "User not found"}
+
+        user_plan = user_response.data.get('plan', 'free')
+
+        # Get rate limit status
+        status = await get_rate_limit_status(user_id, user_plan)
+        return status
+
+    except Exception as e:
+        print(f"Error getting user rate limit status: {e}")
+        return {"error": str(e)}

@@ -212,4 +212,19 @@ export const apiService = {
 
     return response.json();
   },
+
+  getRateLimitStatus: async (userId: string) => {
+    const headers = await getAuthHeaders();
+    const response = await fetch(`${FASTAPI_BACKEND_URL}/api/rate-limit-status/${userId}`, {
+      method: 'GET',
+      headers,
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ detail: 'Failed to fetch rate limit status' }));
+      throw new Error(error.detail || 'Failed to fetch rate limit status');
+    }
+
+    return response.json();
+  },
 };
