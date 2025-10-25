@@ -1,4 +1,4 @@
-import { Activity, TrendingUp, Globe } from 'lucide-react';
+import { Activity, TrendingUp, Globe, List } from 'lucide-react';
 import { Card, CardContent } from '../ui/Card';
 
 interface DashboardStatsProps {
