@@ -423,6 +423,26 @@ export const Dashboard = () => {
                                           {endpoint.summary}
                                         </p>
                                       )}
+
+                                      {endpoint.parameters.length > 0 && (
+                                        <div className="mb-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded">
+                                          <p className="text-xs font-semibold text-blue-900 dark:text-blue-300 mb-1">Parameters:</p>
+                                          <div className="space-y-1">
+                                            {endpoint.parameters.map((param, paramIdx) => (
+                                              <div key={paramIdx} className="text-xs">
+                                                <code className="font-mono text-blue-700 dark:text-blue-400">
+                                                  {param.name}
+                                                </code>
+                                                <span className="text-gray-600 dark:text-gray-400">
+                                                  {' '}({param.type})
+                                                  {param.required && <span className="text-red-600 dark:text-red-400"> *required</span>}
+                                                </span>
+                                              </div>
+                                            ))}
+                                          </div>
+                                        </div>
+                                      )}
+
                                       <div className="mt-2 bg-gray-900 dark:bg-black rounded p-2 relative group">
                                         <pre className="text-xs text-gray-100 overflow-x-auto">
                                           <code>{curlExample}</code>
