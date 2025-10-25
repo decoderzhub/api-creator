@@ -18,7 +18,7 @@ import { APICard } from '../components/dashboard/APICard';
 import { SavedAPICard } from '../components/dashboard/SavedAPICard';
 import { PublishModal } from '../components/dashboard/PublishModal';
 import { CodeModal } from '../components/dashboard/CodeModal';
-import { parseEndpointsFromCode, ParsedEndpoint } from '../lib/endpoints';
+import { parseEndpointsFromCode, formatCurlExample, ParsedEndpoint } from '../lib/endpoints';
 
 interface SavedAPI {
   id: string;
