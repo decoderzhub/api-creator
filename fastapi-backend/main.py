@@ -20,6 +20,7 @@ from routes.analytics import router as analytics_router
 from routes.marketplace import router as marketplace_router
 from routes.suggestions import router as suggestions_router
 from routes.rate_limit import router as rate_limit_router
+from routes.ai_chat import router as ai_chat_router
 
 settings = get_settings()
 
@@ -35,6 +36,7 @@ app.include_router(analytics_router, prefix="/api/api-analytics", tags=["Analyti
 app.include_router(marketplace_router, prefix="/api/marketplace", tags=["Marketplace"])
 app.include_router(suggestions_router, prefix="/api", tags=["AI Suggestions"])
 app.include_router(rate_limit_router, prefix="/api", tags=["Rate Limiting"])
+app.include_router(ai_chat_router, prefix="/api", tags=["AI Chat"])
 
 app.add_middleware(
     CORSMiddleware,

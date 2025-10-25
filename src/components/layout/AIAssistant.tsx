@@ -80,12 +80,11 @@ export const AIAssistant = () => {
         .map(m => ({ role: m.role, content: m.content }));
 
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-chat`,
+        `${import.meta.env.VITE_FASTAPI_GATEWAY_URL}/api/ai-chat`,
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
           },
           body: JSON.stringify({
             message: inputValue,
