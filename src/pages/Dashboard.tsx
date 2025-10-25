@@ -44,6 +44,13 @@ export const Dashboard = () => {
   useEffect(() => {
     loadAPIs();
     loadRateLimitStatus();
+
+    // Refresh rate limit status every 30 seconds
+    const rateLimitInterval = setInterval(() => {
+      loadRateLimitStatus();
+    }, 30000);
+
+    return () => clearInterval(rateLimitInterval);
   }, [profile]);
 
   const loadAPIs = async () => {
