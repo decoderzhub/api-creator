@@ -29,7 +29,12 @@ class SuggestAboutRequest(BaseModel):
 async def suggest_prompts(request: SuggestPromptsRequest, user_id: str = Depends(verify_token)):
     """Generate AI-powered prompt suggestions using Anthropic Claude"""
     try:
+        print(f"[SUGGESTIONS] API Name: {request.apiName}")
+        print(f"[SUGGESTIONS] Partial Prompt Length: {len(request.partialPrompt)} chars")
+        print(f"[SUGGESTIONS] Partial Prompt: {request.partialPrompt[:100]}...")
+
         if not ANTHROPIC_API_KEY:
+            print("[SUGGESTIONS] No Anthropic API key, using fallback")
             return get_fallback_suggestions(request.apiName, request.partialPrompt)
 
         client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
@@ -57,16 +62,21 @@ Suggest 3 complete API descriptions:"""
         )
 
         content = message.content[0].text.strip()
+        print(f"[SUGGESTIONS] AI Response: {content[:200]}...")
 
         try:
             import json
             suggestions = json.loads(content)
-        except:
+            print(f"[SUGGESTIONS] Parsed {len(suggestions)} suggestions successfully")
+        except Exception as parse_error:
+            print(f"[SUGGESTIONS] JSON parse failed: {parse_error}, trying fallback parsing")
             import re
             lines = content.split('\n')
             suggestions = [re.sub(r'^[0-9.\-*]\s*', '', line.strip().strip('"').strip("'")) for line in lines if line.strip()][:3]
+            print(f"[SUGGESTIONS] Fallback parsed {len(suggestions)} suggestions")
 
         if not suggestions or len(suggestions) == 0:
+            print("[SUGGESTIONS] No suggestions generated, using fallback")
             return get_fallback_suggestions(request.apiName, request.partialPrompt)
 
         return {"suggestions": suggestions[:3]}

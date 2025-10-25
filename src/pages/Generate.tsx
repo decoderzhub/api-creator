@@ -38,7 +38,10 @@ export const Generate = () => {
   useEffect(() => {
     const words = prompt.trim().split(/\s+/);
     if (words.length >= 3) {
-      fetchPromptSuggestions();
+      const timeoutId = setTimeout(() => {
+        fetchPromptSuggestions();
+      }, 1000);
+      return () => clearTimeout(timeoutId);
     } else {
       setShowPromptSuggestions(false);
       setPromptSuggestions([]);
@@ -48,7 +51,10 @@ export const Generate = () => {
   useEffect(() => {
     const words = about.trim().split(/\s+/);
     if (words.length >= 3 && prompt.trim()) {
-      fetchAboutSuggestions();
+      const timeoutId = setTimeout(() => {
+        fetchAboutSuggestions();
+      }, 1000);
+      return () => clearTimeout(timeoutId);
     } else {
       setShowAboutSuggestions(false);
       setAboutSuggestions([]);
