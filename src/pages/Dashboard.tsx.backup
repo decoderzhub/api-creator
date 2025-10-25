@@ -1,18 +1,17 @@
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { List } from 'lucide-react';
+import { Trash2, ExternalLink, Copy, Activity, TrendingUp, Globe, X, List, ChevronDown, ChevronUp, CreditCard as Edit2, Check, Code, Zap, Play, Bookmark, BookmarkX } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
+import { Badge } from '../components/ui/Badge';
+import { CodeViewer } from '../components/ui/CodeViewer';
+import { AudioPlayer } from '../components/ui/AudioPlayer';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../hooks/useToast';
 import { API } from '../lib/types';
+import { parseEndpointsFromCode, formatCurlExample, ParsedEndpoint } from '../lib/endpoints';
 import { apiService } from '../lib/api';
-import { DashboardStats } from '../components/dashboard/DashboardStats';
-import { APICard } from '../components/dashboard/APICard';
-import { SavedAPICard } from '../components/dashboard/SavedAPICard';
-import { PublishModal } from '../components/dashboard/PublishModal';
-import { CodeModal } from '../components/dashboard/CodeModal';
 
 interface SavedAPI {
   id: string;
@@ -430,12 +429,92 @@ export const Dashboard = () => {
         </p>
       </motion.div>
 
-      <DashboardStats
-        stats={stats}
-        limits={currentLimits}
-        rateLimitStatus={rateLimitStatus}
-        resetCountdown={resetCountdown}
-      />
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Total APIs</p>
+                <p className="text-3xl font-bold text-gray-900 dark:text-gray-100">
+                  {stats.totalAPIs}
+                  <span className="text-lg text-gray-500 dark:text-gray-400">/{currentLimits.apis}</span>
+                </p>
+              </div>
+              <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
+                <Activity className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Total Calls</p>
+                <p className="text-3xl font-bold text-gray-900 dark:text-gray-100">
+                  {stats.totalCalls.toLocaleString()}
+                  <span className="text-lg text-gray-500 dark:text-gray-400">/{currentLimits.calls.toLocaleString()}</span>
+                </p>
+              </div>
+              <div className="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center">
+                <TrendingUp className="w-6 h-6 text-green-600 dark:text-green-400" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Active APIs</p>
+                <p className="text-3xl font-bold text-gray-900 dark:text-gray-100">
+                  {stats.activeAPIs}
+                  <span className="text-lg text-gray-500 dark:text-gray-400">/{currentLimits.activeApis}</span>
+                </p>
+              </div>
+              <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/30 rounded-lg flex items-center justify-center">
+                <ExternalLink className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Rate Limit</p>
+                {rateLimitStatus ? (
+                  <>
+                    <p className="text-3xl font-bold text-gray-900 dark:text-gray-100">
+                      {rateLimitStatus.remaining}
+                      <span className="text-lg text-gray-500 dark:text-gray-400">/{rateLimitStatus.limit}</span>
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      {rateLimitStatus.used} used • {rateLimitStatus.plan} plan
+                    </p>
+                    <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                      Resets in: {resetCountdown}
+                    </p>
+                    {rateLimitStatus.remaining < rateLimitStatus.limit * 0.2 && (
+                      <p className="text-xs text-orange-600 dark:text-orange-400 mt-1">
+                        Running low on requests
+                      </p>
+                    )}
+                  </>
+                ) : (
+                  <p className="text-3xl font-bold text-gray-900 dark:text-gray-100">-</p>
+                )}
+              </div>
+              <div className="w-12 h-12 bg-orange-100 dark:bg-orange-900/30 rounded-lg flex items-center justify-center">
+                <Zap className="w-6 h-6 text-orange-600 dark:text-orange-400" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
       {savedApis.length > 0 && (
         <Card className="mb-8">
@@ -951,30 +1030,146 @@ export const Dashboard = () => {
       </Card>
 
       <AnimatePresence>
-        <PublishModal
-          isOpen={publishModalOpen}
-          api={selectedApi}
-          isLoading={publishLoading}
-          onClose={() => setPublishModalOpen(false)}
-          onPublish={handlePublishToMarketplace}
-        />
+        {publishModalOpen && selectedApi && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+            onClick={() => setPublishModalOpen(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-lg w-full p-6"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-start justify-between mb-4">
+                <div>
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-1">
+                    Publish to Marketplace
+                  </h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    Share your API with the community
+                  </p>
+                </div>
+                <button
+                  onClick={() => setPublishModalOpen(false)}
+                  className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="space-y-4 mb-6">
+                <div>
+                  <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                    API Name
+                  </h4>
+                  <p className="text-gray-900 dark:text-gray-100">{selectedApi.name}</p>
+                </div>
+
+                <div>
+                  <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                    About
+                  </h4>
+                  <p className="text-gray-900 dark:text-gray-100">
+                    {selectedApi.about || 'No about section provided'}
+                  </p>
+                  {!selectedApi.about && (
+                    <p className="text-sm text-red-600 dark:text-red-400 mt-1">
+                      You need to add an about section before publishing. Please edit your API.
+                    </p>
+                  )}
+                </div>
+
+                <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                  <p className="text-sm text-gray-700 dark:text-gray-300">
+                    <strong>Note:</strong> Once published, your API will be visible to all users in the marketplace. You can unpublish it at any time.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex gap-3">
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => setPublishModalOpen(false)}
+                  disabled={publishLoading}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  className="flex-1"
+                  onClick={handlePublishToMarketplace}
+                  isLoading={publishLoading}
+                  disabled={!selectedApi.about || publishLoading}
+                >
+                  <Globe className="w-4 h-4 mr-2" />
+                  Publish
+                </Button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
       </AnimatePresence>
 
       <AnimatePresence>
-        <CodeModal
-          isOpen={codeModalOpen}
-          code={viewingCode}
-          isCopied={codeCopied}
-          onClose={() => setCodeModalOpen(false)}
-          onCopy={() => {
-            if (viewingCode) {
-              navigator.clipboard.writeText(viewingCode.code);
-              addToast('Code copied to clipboard!', 'success');
-              setCodeCopied(true);
-              setTimeout(() => setCodeCopied(false), 2000);
-            }
-          }}
-        />
+        {codeModalOpen && viewingCode && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+            onClick={() => setCodeModalOpen(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-4xl w-full max-h-[80vh] flex flex-col"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
+                <div className="flex items-center gap-3">
+                  <Code className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                  <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
+                    {viewingCode.name}
+                  </h2>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(viewingCode.code);
+                      addToast('Code copied to clipboard!', 'success');
+                      setCodeCopied(true);
+                      setTimeout(() => setCodeCopied(false), 2000);
+                    }}
+                    className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                    title="Copy all code"
+                  >
+                    {codeCopied ? (
+                      <Check className="w-5 h-5 text-green-600 dark:text-green-400" />
+                    ) : (
+                      <Copy className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                    )}
+                  </button>
+                  <button
+                    onClick={() => setCodeModalOpen(false)}
+                    className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                  >
+                    <X className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex-1 overflow-auto p-6">
+                <CodeViewer code={viewingCode.code} language="python" />
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
       </AnimatePresence>
     </div>
   );
