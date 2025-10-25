@@ -11,17 +11,17 @@ export const CodeViewer = ({ code, language = 'python' }: CodeViewerProps) => {
   const markdownCode = `\`\`\`${language}\n${code}\n\`\`\``;
 
   return (
-    <div className="prose prose-invert max-w-none">
+    <div className="prose prose-invert max-w-none text-xs">
       <ReactMarkdown
         rehypePlugins={[rehypeHighlight]}
         components={{
           pre: ({ children }) => (
-            <pre className="!bg-gray-900 !p-4 rounded-lg overflow-x-auto">
+            <pre className="!bg-gray-900 !p-4 rounded-lg overflow-x-auto !text-xs">
               {children}
             </pre>
           ),
           code: ({ children, className }) => (
-            <code className={className}>
+            <code className={`${className} !text-xs`}>
               {children}
             </code>
           ),
