@@ -101,14 +101,18 @@ export const Generate = () => {
       return;
     }
 
-    if (profile.plan === 'free' && profile.api_generation_count >= 3) {
-      setShowUpgradeModal(true);
-      return;
-    }
+    const isAdmin = profile.email === 'darin.j.manley@gmail.com';
 
-    if (profile.plan === 'pro' && profile.api_generation_count >= 20) {
-      setShowUpgradeModal(true);
-      return;
+    if (!isAdmin) {
+      if (profile.plan === 'free' && profile.api_generation_count >= 3) {
+        setShowUpgradeModal(true);
+        return;
+      }
+
+      if (profile.plan === 'pro' && profile.api_generation_count >= 20) {
+        setShowUpgradeModal(true);
+        return;
+      }
     }
 
     setLoading(true);
@@ -302,9 +306,14 @@ export const Generate = () => {
           </div>
           {profile && (
             <div className="bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-950/50 dark:to-cyan-950/50 px-6 py-3 rounded-xl border border-blue-200 dark:border-blue-800">
-              <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">Generations Used</div>
+              <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">
+                Generations Used {profile.email === 'darin.j.manley@gmail.com' && <span className="text-green-600 dark:text-green-400 font-semibold">(Admin - Unlimited)</span>}
+              </div>
               <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                {profile.api_generation_count} / {profile.plan === 'free' ? 3 : profile.plan === 'pro' ? 20 : '∞'}
+                {profile.email === 'darin.j.manley@gmail.com'
+                  ? `${profile.api_generation_count} / ∞`
+                  : `${profile.api_generation_count} / ${profile.plan === 'free' ? 3 : profile.plan === 'pro' ? 20 : '∞'}`
+                }
               </div>
             </div>
           )}
