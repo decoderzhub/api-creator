@@ -31,7 +31,7 @@ export const Sidebar = ({ onLogout }: SidebarProps) => {
             <Zap className="w-5 h-5 text-white" />
           </div>
           <span className="text-xl font-bold bg-gradient-to-r from-blue-600 to-blue-700 bg-clip-text text-transparent">
-            API Builder
+            API-Creator
           </span>
         </Link>
       </div>

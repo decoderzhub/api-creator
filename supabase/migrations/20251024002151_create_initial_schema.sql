@@ -1,8 +1,8 @@
 /*
-  # AI API Builder - Initial Database Schema
+  # API-Creator - Initial Database Schema
 
   ## Overview
-  Creates the core database structure for the AI API Builder SaaS platform that enables users to generate, deploy, and monetize APIs using AI.
+  Creates the core database structure for the API-Creator SaaS platform that enables users to generate, deploy, and monetize APIs using AI.
 
   ## New Tables
 

@@ -13,7 +13,7 @@ export const Header = ({ theme, toggleTheme, userEmail, userPlan }: HeaderProps)
     <header className="h-16 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-6 flex items-center justify-between">
       <div className="flex-1">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-          AI API Builder
+          API-Creator
         </h1>
         <p className="text-sm text-gray-600 dark:text-gray-400">
           Build & monetize APIs with natural language
