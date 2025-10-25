@@ -21,7 +21,6 @@ interface APICardProps {
   onSetEditName: (name: string) => void;
   onSetEditAbout: (about: string) => void;
   onViewCode: (api: API) => void;
-  onTestEndpoint: (endpointUrl: string, endpoint: any, apiKey: string) => void;
   onDelete: (apiId: string) => void;
   onPublish: (api: API) => void;
   onCopyToClipboard: (text: string) => void;
@@ -42,7 +41,6 @@ export const APICard = ({
   onSetEditName,
   onSetEditAbout,
   onViewCode,
-  onTestEndpoint,
   onDelete,
   onPublish,
   onCopyToClipboard,
@@ -186,17 +184,6 @@ export const APICard = ({
                           >
                             <Copy className="w-3 h-3 text-gray-300" />
                           </button>
-                        </div>
-
-                        <div className="mt-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => onTestEndpoint(api.endpoint_url, endpoint, api.api_key || '')}
-                          >
-                            <Play className="w-3 h-3 mr-1" />
-                            Test Endpoint
-                          </Button>
                         </div>
                       </div>
                     );

@@ -21,7 +21,6 @@ interface SavedAPICardProps {
   canViewCode: boolean;
   onToggleExpand: () => void;
   onViewCode: (api: API) => void;
-  onTestEndpoint: (endpointUrl: string, endpoint: any, apiKey: string) => void;
   onUnsave: (savedApiId: string) => void;
   onGenerateUserKey: () => void;
   onCopyToClipboard: (text: string) => void;
@@ -35,7 +34,6 @@ export const SavedAPICard = ({
   canViewCode,
   onToggleExpand,
   onViewCode,
-  onTestEndpoint,
   onUnsave,
   onGenerateUserKey,
   onCopyToClipboard,
@@ -137,19 +135,6 @@ export const SavedAPICard = ({
                             <Copy className="w-3 h-3 text-gray-300" />
                           </button>
                         </div>
-
-                        {userApiKey && (
-                          <div className="mt-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => onTestEndpoint(api.endpoint_url, endpoint, userApiKey)}
-                            >
-                              <Play className="w-3 h-3 mr-1" />
-                              Test Endpoint
-                            </Button>
-                          </div>
-                        )}
                       </div>
                     );
                   })}

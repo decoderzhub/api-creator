@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { List } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { supabase } from '../lib/supabase';
@@ -13,6 +12,7 @@ import { APICard } from '../components/dashboard/APICard';
 import { SavedAPICard } from '../components/dashboard/SavedAPICard';
 import { PublishModal } from '../components/dashboard/PublishModal';
 import { CodeModal } from '../components/dashboard/CodeModal';
+import { parseEndpointsFromCode, ParsedEndpoint } from '../lib/endpoints';
 
 interface SavedAPI {
   id: string;
