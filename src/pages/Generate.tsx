@@ -101,7 +101,7 @@ export const Generate = () => {
       return;
     }
 
-    const isAdmin = profile.email === 'darin.j.manley@gmail.com';
+    const isAdmin = profile.is_admin || false;
 
     if (!isAdmin) {
       if (profile.plan === 'free' && profile.api_generation_count >= 3) {
@@ -307,10 +307,10 @@ export const Generate = () => {
           {profile && (
             <div className="bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-950/50 dark:to-cyan-950/50 px-6 py-3 rounded-xl border border-blue-200 dark:border-blue-800">
               <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">
-                Generations Used {profile.email === 'darin.j.manley@gmail.com' && <span className="text-green-600 dark:text-green-400 font-semibold">(Admin - Unlimited)</span>}
+                Generations Used {profile.is_admin && <span className="text-green-600 dark:text-green-400 font-semibold">(Admin - Unlimited)</span>}
               </div>
               <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                {profile.email === 'darin.j.manley@gmail.com'
+                {profile.is_admin
                   ? `${profile.api_generation_count} / ∞`
                   : `${profile.api_generation_count} / ${profile.plan === 'free' ? 3 : profile.plan === 'pro' ? 20 : '∞'}`
                 }
