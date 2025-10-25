@@ -34,14 +34,6 @@ export const Dashboard = () => {
     totalCalls: 0,
     activeAPIs: 0,
   });
-
-  const planLimits = {
-    free: { apis: 5, calls: 1000, activeApis: 3 },
-    pro: { apis: 50, calls: 100000, activeApis: 25 },
-    enterprise: { apis: 999, calls: 9999999, activeApis: 999 }
-  };
-
-  const currentLimits = planLimits[profile?.plan || 'free'];
   const [rateLimitStatus, setRateLimitStatus] = useState<{
     limit: number;
     used: number;
@@ -64,8 +56,27 @@ export const Dashboard = () => {
   const [testingEndpoint, setTestingEndpoint] = useState<string | null>(null);
   const [testResults, setTestResults] = useState<any>(null);
   const [testLoading, setTestLoading] = useState(false);
-  const { profile } = useAuth();
+  const { profile, loading: authLoading } = useAuth();
   const { addToast } = useToast();
+
+  const planLimits = {
+    free: { apis: 5, calls: 1000, activeApis: 3 },
+    pro: { apis: 50, calls: 100000, activeApis: 25 },
+    enterprise: { apis: 999, calls: 9999999, activeApis: 999 }
+  };
+
+  const currentLimits = planLimits[profile?.plan || 'free'];
+
+  if (authLoading) {
+    return (
+      <div className="p-8 flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-400">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
 
   useEffect(() => {
     loadAPIs();
