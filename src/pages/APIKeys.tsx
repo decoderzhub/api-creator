@@ -34,10 +34,13 @@ const serviceOptions = [
 
 export const APIKeys = () => {
   const [apiKeys, setApiKeys] = useState<APIKey[]>([]);
+  const [consumerApiKey, setConsumerApiKey] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [generatingConsumerKey, setGeneratingConsumerKey] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [editingKey, setEditingKey] = useState<APIKey | null>(null);
   const [visibleKeys, setVisibleKeys] = useState<Set<string>>(new Set());
+  const [showConsumerKey, setShowConsumerKey] = useState(false);
   const [formData, setFormData] = useState({
     key_name: '',
     key_value: '',
@@ -50,6 +53,7 @@ export const APIKeys = () => {
   useEffect(() => {
     if (profile) {
       fetchAPIKeys();
+      fetchConsumerApiKey();
     }
   }, [profile]);
 
@@ -67,6 +71,56 @@ export const APIKeys = () => {
       addToast(error.message, 'error');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchConsumerApiKey = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('consumer_api_keys')
+        .select('api_key')
+        .eq('user_id', profile!.id)
+        .maybeSingle();
+
+      if (error) throw error;
+      setConsumerApiKey(data?.api_key || null);
+    } catch (error: any) {
+      console.error('Failed to fetch consumer API key:', error);
+    }
+  };
+
+  const generateConsumerApiKey = async () => {
+    setGeneratingConsumerKey(true);
+    try {
+      const apiKey = `ck_${Math.random().toString(36).substring(2, 15)}${Math.random().toString(36).substring(2, 15)}`;
+
+      const { data: existing } = await supabase
+        .from('consumer_api_keys')
+        .select('id')
+        .eq('user_id', profile!.id)
+        .maybeSingle();
+
+      if (existing) {
+        const { error } = await supabase
+          .from('consumer_api_keys')
+          .update({ api_key: apiKey })
+          .eq('user_id', profile!.id);
+
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('consumer_api_keys')
+          .insert({ user_id: profile!.id, api_key: apiKey });
+
+        if (error) throw error;
+      }
+
+      setConsumerApiKey(apiKey);
+      addToast('Consumer API key generated successfully', 'success');
+    } catch (error: any) {
+      addToast(error.message, 'error');
+    } finally {
+      setGeneratingConsumerKey(false);
     }
   };
 
@@ -259,6 +313,92 @@ export const APIKeys = () => {
           </Button>
         </div>
       </motion.div>
+
+      <Card className="mb-6 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 border-blue-200 dark:border-blue-800">
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
+              <Key className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Consumer API Key</h2>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Use this key to access marketplace APIs you've saved</p>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {consumerApiKey ? (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 p-3 bg-white dark:bg-gray-900 rounded-lg border border-blue-200 dark:border-blue-800">
+                <code className="flex-1 font-mono text-sm text-gray-900 dark:text-gray-100">
+                  {showConsumerKey ? consumerApiKey : maskKey(consumerApiKey)}
+                </code>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setShowConsumerKey(!showConsumerKey)}
+                >
+                  {showConsumerKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    navigator.clipboard.writeText(consumerApiKey);
+                    addToast('Copied to clipboard!', 'success');
+                  }}
+                >
+                  <Plus className="w-4 h-4" />
+                </Button>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={generateConsumerApiKey}
+                disabled={generatingConsumerKey}
+              >
+                {generatingConsumerKey ? (
+                  <>
+                    <div className="w-3 h-3 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mr-2"></div>
+                    Regenerating...
+                  </>
+                ) : (
+                  <>
+                    <Key className="w-4 h-4 mr-2" />
+                    Regenerate Key
+                  </>
+                )}
+              </Button>
+            </div>
+          ) : (
+            <div className="text-center py-4">
+              <p className="text-gray-600 dark:text-gray-400 mb-4">
+                You don't have a consumer API key yet. Generate one to start using marketplace APIs.
+              </p>
+              <Button onClick={generateConsumerApiKey} disabled={generatingConsumerKey}>
+                {generatingConsumerKey ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <Key className="w-4 h-4 mr-2" />
+                    Generate Consumer API Key
+                  </>
+                )}
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <div className="mb-4">
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">Third-Party Service Keys</h2>
+        <p className="text-gray-600 dark:text-gray-400">
+          Store API keys from external services to use when generating your own APIs
+        </p>
+      </div>
 
       {loading ? (
         <Card>

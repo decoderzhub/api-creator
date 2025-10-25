@@ -27,7 +27,8 @@ export const Dashboard = () => {
   const [savedApis, setSavedApis] = useState<SavedAPI[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingSaved, setLoadingSaved] = useState(true);
-  const [generatingKey, setGeneratingKey] = useState<string | null>(null);
+  const [userApiKey, setUserApiKey] = useState<string | null>(null);
+  const [generatingKey, setGeneratingKey] = useState(false);
   const [stats, setStats] = useState({
     totalAPIs: 0,
     totalCalls: 0,
@@ -60,6 +61,7 @@ export const Dashboard = () => {
   useEffect(() => {
     loadAPIs();
     loadSavedAPIs();
+    loadUserApiKey();
     loadRateLimitStatus();
 
     // Refresh rate limit status every 30 seconds
@@ -69,6 +71,24 @@ export const Dashboard = () => {
 
     return () => clearInterval(rateLimitInterval);
   }, [profile]);
+
+  const loadUserApiKey = async () => {
+    if (!profile) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('consumer_api_keys')
+        .select('api_key')
+        .eq('user_id', profile.id)
+        .maybeSingle();
+
+      if (error) throw error;
+
+      setUserApiKey(data?.api_key || null);
+    } catch (err: any) {
+      console.error('Failed to load user API key:', err);
+    }
+  };
 
   const loadAPIs = async () => {
     if (!profile) return;
@@ -116,27 +136,43 @@ export const Dashboard = () => {
     }
   };
 
-  const generateAPIKey = async (savedApiId: string) => {
+  const generateUserAPIKey = async () => {
     if (!profile) return;
 
-    setGeneratingKey(savedApiId);
+    setGeneratingKey(true);
     try {
-      const apiKey = `ak_${Math.random().toString(36).substring(2, 15)}${Math.random().toString(36).substring(2, 15)}`;
+      const apiKey = `ck_${Math.random().toString(36).substring(2, 15)}${Math.random().toString(36).substring(2, 15)}`;
 
-      const { error } = await supabase
-        .from('saved_apis')
-        .update({ user_api_key: apiKey })
-        .eq('id', savedApiId)
-        .eq('user_id', profile.id);
+      // Check if user already has a key
+      const { data: existing } = await supabase
+        .from('consumer_api_keys')
+        .select('id')
+        .eq('user_id', profile.id)
+        .maybeSingle();
 
-      if (error) throw error;
+      if (existing) {
+        // Update existing key
+        const { error } = await supabase
+          .from('consumer_api_keys')
+          .update({ api_key: apiKey })
+          .eq('user_id', profile.id);
 
+        if (error) throw error;
+      } else {
+        // Insert new key
+        const { error } = await supabase
+          .from('consumer_api_keys')
+          .insert({ user_id: profile.id, api_key: apiKey });
+
+        if (error) throw error;
+      }
+
+      setUserApiKey(apiKey);
       addToast('API Key generated successfully!', 'success');
-      await loadSavedAPIs();
     } catch (err: any) {
       addToast(err.message || 'Failed to generate API key', 'error');
     } finally {
-      setGeneratingKey(null);
+      setGeneratingKey(false);
     }
   };
 
@@ -465,7 +501,7 @@ export const Dashboard = () => {
 
                         {api.code_snapshot && (() => {
                           const endpoints = parseEndpointsFromCode(api.code_snapshot);
-                          const apiKey = savedApi.user_api_key || 'Generate API Key below';
+                          const apiKey = userApiKey || 'Generate API Key below';
                           return endpoints.length > 0 && (
                             <div className="mb-3">
                               <button
@@ -564,14 +600,14 @@ export const Dashboard = () => {
                             </div>
                           </div>
 
-                          {savedApi.user_api_key && (
+                          {userApiKey && (
                             <div>
                               <p className="text-xs text-gray-500 dark:text-gray-500 mb-1">Your API Key</p>
                               <div className="flex items-center gap-2">
                                 <code className="flex-1 px-2 py-1 bg-gray-100 dark:bg-gray-900 rounded text-xs font-mono text-gray-900 dark:text-gray-100">
-                                  {savedApi.user_api_key}
+                                  {userApiKey}
                                 </code>
-                                <Button size="sm" variant="ghost" onClick={() => copyToClipboard(savedApi.user_api_key!)}>
+                                <Button size="sm" variant="ghost" onClick={() => copyToClipboard(userApiKey)}>
                                   <Copy className="w-3 h-3" />
                                 </Button>
                               </div>
@@ -593,13 +629,13 @@ export const Dashboard = () => {
                               View Code
                             </Button>
                           )}
-                          {!savedApi.user_api_key ? (
+                          {!userApiKey ? (
                             <Button
                               size="sm"
-                              onClick={() => generateAPIKey(savedApi.id)}
-                              disabled={generatingKey === savedApi.id}
+                              onClick={generateUserAPIKey}
+                              disabled={generatingKey}
                             >
-                              {generatingKey === savedApi.id ? (
+                              {generatingKey ? (
                                 <>
                                   <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
                                   Generating...
@@ -615,10 +651,10 @@ export const Dashboard = () => {
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => generateAPIKey(savedApi.id)}
-                              disabled={generatingKey === savedApi.id}
+                              onClick={generateUserAPIKey}
+                              disabled={generatingKey}
                             >
-                              {generatingKey === savedApi.id ? (
+                              {generatingKey ? (
                                 <>
                                   <div className="w-3 h-3 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mr-2"></div>
                                   Regenerating...
