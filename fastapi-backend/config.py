@@ -36,6 +36,10 @@ class Settings(BaseSettings):
     rate_limit_pro: int = 1000
     rate_limit_enterprise: int = 10000
 
+    # Monitoring
+    sentry_dsn: str = ""
+    environment: str = "production"
+
     class Config:
         env_file = ".env"
         case_sensitive = False

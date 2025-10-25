@@ -9,6 +9,8 @@ import uvicorn
 import os
 from datetime import datetime
 from typing import Optional
+import time
+import contextvars
 
 from api_loader import APILoader
 from auth import verify_api_key, log_api_usage
@@ -21,8 +23,19 @@ from routes.marketplace import router as marketplace_router
 from routes.suggestions import router as suggestions_router
 from routes.rate_limit import router as rate_limit_router
 from routes.ai_chat import router as ai_chat_router
+from logger import logger, generate_request_id
+from monitoring import init_sentry, metrics_collector
+import sentry_sdk
 
 settings = get_settings()
+
+request_id_context = contextvars.ContextVar('request_id', default=None)
+
+sentry_enabled = init_sentry()
+if sentry_enabled:
+    logger.info("Sentry monitoring initialized successfully")
+else:
+    logger.info("Sentry monitoring not configured (SENTRY_DSN not set)")
 
 app = FastAPI(
     title="API Builder Gateway",
@@ -46,18 +59,60 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+@app.middleware("http")
+async def add_request_id_middleware(request: Request, call_next):
+    request_id = generate_request_id()
+    request_id_context.set(request_id)
+    request.state.request_id = request_id
+
+    start_time = time.time()
+
+    response = await call_next(request)
+
+    process_time = time.time() - start_time
+    response.headers["X-Request-ID"] = request_id
+    response.headers["X-Process-Time"] = str(round(process_time * 1000, 2))
+
+    is_error = response.status_code >= 400
+    metrics_collector.increment_request(process_time * 1000, is_error)
+
+    logger.info(
+        "Request processed",
+        extra={
+            "request_id": request_id,
+            "method": request.method,
+            "path": request.url.path,
+            "status_code": response.status_code,
+            "process_time_ms": round(process_time * 1000, 2)
+        }
+    )
+
+    return response
+
+
 api_loader = APILoader()
 
-# Make api_loader accessible to routes via app.state
 app.state.api_loader = api_loader
 
 
 @app.on_event("startup")
 async def startup_event():
     """Load all active APIs from database on startup"""
-    print("🚀 Starting API Gateway...")
-    await api_loader.load_all_apis()
-    print(f"✅ Loaded {len(api_loader.apis)} APIs")
+    logger.info("Starting API Gateway...")
+    try:
+        await api_loader.load_all_apis()
+        logger.info(
+            "APIs loaded successfully",
+            extra={"loaded_count": len(api_loader.apis)}
+        )
+    except Exception as e:
+        logger.error(
+            "Failed to load APIs on startup",
+            extra={"error": str(e)},
+            exc_info=True
+        )
+        sentry_sdk.capture_exception(e)
 
 
 @app.get("/")
@@ -74,12 +129,31 @@ async def root():
 @app.get("/health")
 async def health_check():
     """Detailed health check"""
+    try:
+        from supabase import create_client
+        supabase = create_client(settings.supabase_url, settings.supabase_service_role_key)
+        db_check = await supabase.table("apis").select("id").limit(1).execute()
+        db_status = "connected"
+    except Exception as e:
+        logger.error("Database health check failed", extra={"error": str(e)})
+        db_status = "disconnected"
+
     return {
-        "status": "healthy",
+        "status": "healthy" if db_status == "connected" else "degraded",
         "loaded_apis": len(api_loader.apis),
-        "uptime": "running",
-        "database": "connected"
+        "database": db_status,
+        "sentry_enabled": sentry_enabled,
+        "timestamp": datetime.utcnow().isoformat()
     }
+
+
+@app.get("/metrics")
+async def get_metrics(authorization: str = Header(None)):
+    """Get system metrics (admin only)"""
+    if authorization != f"Bearer {settings.admin_api_key}":
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    return metrics_collector.get_metrics()
 
 
 @app.post("/admin/reload")
@@ -88,7 +162,10 @@ async def reload_apis(authorization: str = Header(None)):
     if authorization != f"Bearer {settings.admin_api_key}":
         raise HTTPException(status_code=401, detail="Unauthorized")
 
+    logger.info("Reloading all APIs")
     await api_loader.load_all_apis()
+    logger.info("APIs reloaded", extra={"loaded_count": len(api_loader.apis)})
+
     return {
         "success": True,
         "loaded_apis": len(api_loader.apis),
@@ -102,10 +179,13 @@ async def reload_single_api(api_id: str, authorization: str = Header(None)):
     if authorization != f"Bearer {settings.admin_api_key}":
         raise HTTPException(status_code=401, detail="Unauthorized")
 
+    logger.info(f"Reloading API {api_id}")
     success = await api_loader.load_api(api_id)
     if success:
+        logger.info(f"API {api_id} reloaded successfully")
         return {"success": True, "message": f"API {api_id} reloaded"}
     else:
+        logger.warning(f"API {api_id} not found")
         raise HTTPException(status_code=404, detail="API not found")
 
 
@@ -122,8 +202,8 @@ async def proxy_to_user_api(
     Format: /{api_id} or /{api_id}/{endpoint_path}
     """
     start_time = datetime.utcnow()
+    request_id = request.state.request_id if hasattr(request.state, 'request_id') else "unknown"
 
-    # Verify API key
     api_key = None
     if authorization and authorization.startswith("Bearer "):
         api_key = authorization.replace("Bearer ", "")
@@ -134,20 +214,26 @@ async def proxy_to_user_api(
             content={"error": "Missing API key. Include 'Authorization: Bearer YOUR_API_KEY' header"}
         )
 
-    # Verify the API key and get API metadata
     api_metadata = await verify_api_key(api_id, api_key)
     if not api_metadata:
+        logger.warning(
+            "Invalid API key attempt",
+            extra={"api_id": api_id, "request_id": request_id}
+        )
         return JSONResponse(
             status_code=401,
             content={"error": "Invalid API key or API not found"}
         )
 
-    # Check rate limit
     user_id = api_metadata.get("user_id")
     user_plan = api_metadata.get("user_plan", "free")
     is_allowed, rate_limit_info = await check_rate_limit(user_id, user_plan)
 
     if not is_allowed:
+        logger.warning(
+            "Rate limit exceeded",
+            extra={"user_id": user_id, "api_id": api_id, "request_id": request_id}
+        )
         return JSONResponse(
             status_code=429,
             content={
@@ -162,28 +248,28 @@ async def proxy_to_user_api(
             }
         )
 
-    # Check if API is active
     if api_metadata.get("status") != "active":
         return JSONResponse(
             status_code=503,
             content={"error": f"API is {api_metadata.get('status')}"}
         )
 
-    # Get the loaded API handler
     api_handler = api_loader.get_api(api_id)
     if not api_handler:
-        # Try to load it if not already loaded
         await api_loader.load_api(api_id)
         api_handler = api_loader.get_api(api_id)
 
         if not api_handler:
+            logger.error(
+                "API not loaded",
+                extra={"api_id": api_id, "request_id": request_id}
+            )
             return JSONResponse(
                 status_code=503,
                 content={"error": "API not loaded. Please try again."}
             )
 
     try:
-        # Get the user's FastAPI app
         user_app = api_handler.get_app()
 
         if not user_app:
@@ -192,21 +278,17 @@ async def proxy_to_user_api(
                 content={"error": "User API app not properly configured"}
             )
 
-        # Forward the request to the user's app
         from starlette.testclient import TestClient
         client = TestClient(user_app)
 
-        # Prepare the request
         url = f"/{path}" if path else "/"
         if request.query_params:
             url += f"?{request.query_params}"
 
-        # Get request body if present
         body = None
         if request.method in ["POST", "PUT", "PATCH"]:
             body = await request.body()
 
-        # Make the request to the user's app
         method_fn = getattr(client, request.method.lower())
 
         if request.method in ["POST", "PUT", "PATCH"] and body:
@@ -214,10 +296,8 @@ async def proxy_to_user_api(
         else:
             response = method_fn(url, headers=dict(request.headers))
 
-        # Increment rate limit counter
         await increment_rate_limit(user_id)
 
-        # Log usage
         response_time = (datetime.utcnow() - start_time).total_seconds() * 1000
         await log_api_usage(
             api_id=api_id,
@@ -225,6 +305,17 @@ async def proxy_to_user_api(
             status_code=response.status_code,
             response_time_ms=int(response_time),
             request_size_bytes=len(body) if body else 0
+        )
+
+        logger.info(
+            "API request successful",
+            extra={
+                "api_id": api_id,
+                "user_id": user_id,
+                "status_code": response.status_code,
+                "response_time_ms": int(response_time),
+                "request_id": request_id
+            }
         )
 
         return JSONResponse(
@@ -238,9 +329,17 @@ async def proxy_to_user_api(
         )
 
     except Exception as e:
-        print(f"Error executing API {api_id}: {str(e)}")
+        logger.error(
+            f"Error executing API {api_id}",
+            extra={
+                "api_id": api_id,
+                "error": str(e),
+                "request_id": request_id
+            },
+            exc_info=True
+        )
+        sentry_sdk.capture_exception(e)
 
-        # Log error
         response_time = (datetime.utcnow() - start_time).total_seconds() * 1000
         await log_api_usage(
             api_id=api_id,

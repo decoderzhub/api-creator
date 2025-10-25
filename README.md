@@ -10,6 +10,7 @@ A SaaS platform that allows users to generate, deploy, and manage production-rea
 - **Usage Analytics**: Real-time analytics, performance metrics, and usage tracking
 - **API Marketplace**: Publish and monetize your APIs in our growing marketplace
 - **Secure by Default**: Built-in authentication, rate limiting, and industry-standard security
+- **Production Monitoring**: Sentry integration, structured logging, health checks, and real-time metrics dashboard
 
 ## Tech Stack
 
@@ -70,6 +71,7 @@ npm run dev
 
 - **[SETUP.md](./SETUP.md)** - Complete setup guide with troubleshooting
 - **[ARCHITECTURE.md](./ARCHITECTURE.md)** - System architecture and design decisions
+- **[MONITORING_SETUP.md](./MONITORING_SETUP.md)** - Monitoring and observability setup
 - **[fastapi-backend/README.md](./fastapi-backend/README.md)** - FastAPI gateway documentation
 
 ## How It Works
