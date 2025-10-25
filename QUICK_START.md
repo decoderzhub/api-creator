@@ -147,15 +147,50 @@ All database migrations have been applied:
 - Example prompts
 - Integration tips
 
+## 🤖 AI Assistant Setup
+
+The AI Assistant uses Anthropic's Claude API for real-time streaming responses with typewriter effect!
+
+**Quick Setup (5 minutes):**
+
+1. **Get Anthropic API Key**
+   - Go to https://console.anthropic.com/
+   - Sign up and get your API key (starts with `sk-ant-...`)
+
+2. **Deploy Edge Function**
+   - Function ready at `supabase/functions/ai-chat/index.ts`
+   - Deploy using Supabase Dashboard
+
+3. **Add API Key to Supabase**
+   - Supabase Dashboard > Settings > Edge Functions
+   - Add secret: `ANTHROPIC_API_KEY`
+   - Paste your API key
+
+4. **Test It**
+   - Click chat button in bottom-right
+   - Watch responses stream in real-time!
+
+**See:** `AI_ASSISTANT_SETUP.md` for full details
+
+**Without API Key:**
+- Shows helpful fallback messages
+- Example prompts still work
+- Full streaming after setup
+
 ## 🚀 Next Steps
 
 ### Immediate (Optional)
-1. **Enable Email Verification**
+1. **Enable AI Assistant** (Recommended!)
+   - Open `AI_ASSISTANT_SETUP.md`
+   - Get Anthropic API key
+   - 5-minute setup for real AI chat
+
+2. **Enable Email Verification**
    - Open `MFA_SETUP.md`
    - Follow Step 1 (5 minutes)
    - Test with a signup
 
-2. **Configure SMTP** (Recommended)
+3. **Configure SMTP** (Recommended)
    - Better email deliverability
    - Custom sender domain
    - See MFA_SETUP.md "Custom SMTP Provider"

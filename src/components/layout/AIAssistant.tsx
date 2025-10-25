@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MessageSquare, X, Send, Sparkles, Image, Music, Code, Globe, Key } from 'lucide-react';
+import { MessageSquare, X, Send, Sparkles, Image, Music, Code, Globe, Key, Loader2 } from 'lucide-react';
 import { Button } from '../ui/Button';
 
 interface Message {
@@ -52,27 +52,110 @@ export const AIAssistant = () => {
     }
   ]);
   const [inputValue, setInputValue] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSend = () => {
-    if (!inputValue.trim()) return;
+  const handleSend = async () => {
+    if (!inputValue.trim() || isLoading) return;
 
-    const newMessage: Message = {
+    const userMessage: Message = {
       id: Date.now().toString(),
       role: 'user',
       content: inputValue
     };
 
-    setMessages(prev => [...prev, newMessage]);
+    setMessages(prev => [...prev, userMessage]);
     setInputValue('');
+    setIsLoading(true);
 
-    setTimeout(() => {
-      const response: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: 'Great idea! Here are some tips for your API:\n\n1. Make sure to store your API keys in the API Keys page\n2. Reference them by name when describing your API\n3. Include proper error handling and rate limiting\n4. Consider caching responses to reduce costs\n\nWhen ready, go to the Generate page and paste this prompt!'
-      };
-      setMessages(prev => [...prev, response]);
-    }, 1000);
+    const assistantMessageId = (Date.now() + 1).toString();
+    setMessages(prev => [...prev, {
+      id: assistantMessageId,
+      role: 'assistant',
+      content: ''
+    }]);
+
+    try {
+      const conversationHistory = messages
+        .filter(m => m.role !== 'assistant' || m.content !== messages[0].content)
+        .map(m => ({ role: m.role, content: m.content }));
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-chat`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          },
+          body: JSON.stringify({
+            message: inputValue,
+            conversationHistory: conversationHistory.slice(-6),
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to get response');
+      }
+
+      if (response.headers.get('content-type')?.includes('text/event-stream')) {
+        const reader = response.body?.getReader();
+        const decoder = new TextDecoder();
+        let accumulatedContent = '';
+
+        if (reader) {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            const chunk = decoder.decode(value, { stream: true });
+            const lines = chunk.split('\n');
+
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                const data = line.slice(6);
+                if (data === '[DONE]') continue;
+
+                try {
+                  const parsed = JSON.parse(data);
+                  if (parsed.type === 'content_block_delta' && parsed.delta?.text) {
+                    accumulatedContent += parsed.delta.text;
+                    setMessages(prev => prev.map(m =>
+                      m.id === assistantMessageId
+                        ? { ...m, content: accumulatedContent }
+                        : m
+                    ));
+                  }
+                } catch (e) {
+                  console.error('Parse error:', e);
+                }
+              }
+            }
+          }
+        }
+      } else {
+        const data = await response.json();
+        if (data.fallback) {
+          setMessages(prev => prev.map(m =>
+            m.id === assistantMessageId
+              ? { ...m, content: data.fallback }
+              : m
+          ));
+        }
+      }
+    } catch (error: any) {
+      console.error('Error:', error);
+      const fallbackMessage = 'I apologize, but I\'m having trouble connecting right now. Here are some tips for generating APIs:\n\n1. Store your API keys in the API Keys page\n2. Reference them by name when describing your API\n3. Include proper error handling and rate limiting\n4. Consider caching responses to reduce costs\n\nWhen ready, go to the Generate page and describe your API!';
+
+      setMessages(prev => prev.map(m =>
+        m.id === assistantMessageId
+          ? { ...m, content: fallbackMessage }
+          : m
+      ));
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleExampleClick = (prompt: string) => {
@@ -134,6 +217,14 @@ export const AIAssistant = () => {
                 </div>
               ))}
 
+              {isLoading && (
+                <div className="flex justify-start">
+                  <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-3">
+                    <Loader2 className="w-5 h-5 text-blue-600 animate-spin" />
+                  </div>
+                </div>
+              )}
+
               <div className="space-y-2">
                 <p className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">
                   Example Prompts
@@ -176,12 +267,17 @@ export const AIAssistant = () => {
                   type="text"
                   value={inputValue}
                   onChange={(e) => setInputValue(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && handleSend()}
+                  onKeyPress={(e) => e.key === 'Enter' && !isLoading && handleSend()}
                   placeholder="Ask about API integrations..."
-                  className="flex-1 px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  disabled={isLoading}
+                  className="flex-1 px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
                 />
-                <Button onClick={handleSend} size="sm">
-                  <Send className="w-4 h-4" />
+                <Button onClick={handleSend} size="sm" disabled={isLoading}>
+                  {isLoading ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Send className="w-4 h-4" />
+                  )}
                 </Button>
               </div>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
