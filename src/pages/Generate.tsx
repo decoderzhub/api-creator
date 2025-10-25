@@ -1,10 +1,11 @@
 import { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Sparkles, Copy, Check, ExternalLink, Rocket, Code, Zap, Lightbulb, List } from 'lucide-react';
+import { Sparkles, Copy, Check, ExternalLink, Rocket, Code, Zap, Lightbulb, List, Crown } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Textarea } from '../components/ui/Textarea';
 import { Input } from '../components/ui/Input';
+import { Modal } from '../components/ui/Modal';
 import { supabase } from '../lib/supabase';
 import { apiService } from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
@@ -32,6 +33,7 @@ export const Generate = () => {
   const [showPromptSuggestions, setShowPromptSuggestions] = useState(false);
   const [showAboutSuggestions, setShowAboutSuggestions] = useState(false);
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const { profile } = useAuth();
   const { addToast } = useToast();
 
@@ -100,7 +102,12 @@ export const Generate = () => {
     }
 
     if (profile.plan === 'free' && profile.api_generation_count >= 3) {
-      addToast('Free plan limit reached. Upgrade to Pro for more generations.', 'error');
+      setShowUpgradeModal(true);
+      return;
+    }
+
+    if (profile.plan === 'pro' && profile.api_generation_count >= 20) {
+      setShowUpgradeModal(true);
       return;
     }
 
@@ -176,6 +183,107 @@ export const Generate = () => {
   };
 
   return (
+    <>
+      <Modal
+        isOpen={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        title="Upgrade Required"
+        maxWidth="lg"
+      >
+        <div className="space-y-6">
+          <div className="flex items-start gap-4">
+            <div className="w-12 h-12 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-xl flex items-center justify-center flex-shrink-0">
+              <Crown className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                You've Reached Your Limit
+              </h3>
+              <p className="text-gray-600 dark:text-gray-400">
+                {profile?.plan === 'free'
+                  ? "You've used all 3 API generations on the Free plan. Upgrade to Pro to generate up to 20 APIs per month, or Enterprise for unlimited generations."
+                  : "You've used all 20 API generations on the Pro plan. Upgrade to Enterprise for unlimited API generations."}
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {profile?.plan === 'free' && (
+              <div className="border-2 border-blue-500 rounded-lg p-4 bg-blue-50 dark:bg-blue-950/20">
+                <div className="flex items-center gap-2 mb-3">
+                  <Zap className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                  <h4 className="font-semibold text-gray-900 dark:text-gray-100">Pro Plan</h4>
+                </div>
+                <div className="space-y-2 mb-4">
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Perfect for growing projects</p>
+                  <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">$29<span className="text-sm font-normal text-gray-600 dark:text-gray-400">/month</span></div>
+                </div>
+                <ul className="space-y-2 mb-4 text-sm text-gray-700 dark:text-gray-300">
+                  <li className="flex items-center gap-2">
+                    <Check className="w-4 h-4 text-green-600" />
+                    20 API generations/month
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check className="w-4 h-4 text-green-600" />
+                    Priority support
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check className="w-4 h-4 text-green-600" />
+                    Advanced analytics
+                  </li>
+                </ul>
+                <Button
+                  className="w-full"
+                  onClick={() => window.location.href = '/billing'}
+                >
+                  Upgrade to Pro
+                </Button>
+              </div>
+            )}
+
+            <div className="border-2 border-purple-500 rounded-lg p-4 bg-purple-50 dark:bg-purple-950/20">
+              <div className="flex items-center gap-2 mb-3">
+                <Crown className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+                <h4 className="font-semibold text-gray-900 dark:text-gray-100">Enterprise Plan</h4>
+              </div>
+              <div className="space-y-2 mb-4">
+                <p className="text-sm text-gray-600 dark:text-gray-400">For teams and large projects</p>
+                <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">$99<span className="text-sm font-normal text-gray-600 dark:text-gray-400">/month</span></div>
+              </div>
+              <ul className="space-y-2 mb-4 text-sm text-gray-700 dark:text-gray-300">
+                <li className="flex items-center gap-2">
+                  <Check className="w-4 h-4 text-green-600" />
+                  Unlimited API generations
+                </li>
+                <li className="flex items-center gap-2">
+                  <Check className="w-4 h-4 text-green-600" />
+                  24/7 dedicated support
+                </li>
+                <li className="flex items-center gap-2">
+                  <Check className="w-4 h-4 text-green-600" />
+                  Custom integrations
+                </li>
+              </ul>
+              <Button
+                className="w-full bg-purple-600 hover:bg-purple-700"
+                onClick={() => window.location.href = '/billing'}
+              >
+                Upgrade to Enterprise
+              </Button>
+            </div>
+          </div>
+
+          <div className="text-center pt-4 border-t border-gray-200 dark:border-gray-800">
+            <button
+              onClick={() => setShowUpgradeModal(false)}
+              className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100"
+            >
+              Maybe later
+            </button>
+          </div>
+        </div>
+      </Modal>
+
     <div className="p-8 max-w-7xl mx-auto">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -497,5 +605,6 @@ export const Generate = () => {
         )}
       </div>
     </div>
+    </>
   );
 };
