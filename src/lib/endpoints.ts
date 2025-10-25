@@ -157,23 +157,40 @@ export function parseEndpointsFromCode(code: string): ParsedEndpoint[] {
   return endpoints;
 }
 
+function getExampleValue(paramName: string): string {
+  const lowerName = paramName.toLowerCase();
+
+  // Common parameter patterns with example values
+  if (lowerName.includes('id')) return '123e4567-e89b-12d3-a456-426614174000';
+  if (lowerName === 'category') return 'ambient';
+  if (lowerName === 'duration') return '3.0';
+  if (lowerName === 'limit') return '10';
+  if (lowerName === 'offset') return '0';
+  if (lowerName === 'page') return '1';
+  if (lowerName === 'name') return 'example';
+  if (lowerName === 'email') return 'user@example.com';
+  if (lowerName === 'status') return 'active';
+
+  // Default fallback
+  return 'value';
+}
+
 export function formatCurlExample(baseUrl: string, endpoint: ParsedEndpoint, apiKey: string): string {
   let url = `${baseUrl}${endpoint.path}`;
 
   // Replace path parameters with example values
   const pathParams = endpoint.parameters.filter(p => p.type === 'path');
   pathParams.forEach(param => {
-    url = url.replace(`{${param.name}}`, `{${param.name}}`);
+    const exampleValue = getExampleValue(param.name);
+    url = url.replace(`{${param.name}}`, exampleValue);
   });
 
-  // Add query parameters
+  // Add query parameters with example values
   const queryParams = endpoint.parameters.filter(p => p.type === 'query');
   if (queryParams.length > 0) {
     const queryString = queryParams.map(param => {
-      if (param.required) {
-        return `${param.name}={${param.name}}`;
-      }
-      return `${param.name}={${param.name}}`;
+      const exampleValue = getExampleValue(param.name);
+      return `${param.name}=${exampleValue}`;
     }).join('&');
     url += `?${queryString}`;
   }
