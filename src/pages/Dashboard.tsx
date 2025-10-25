@@ -217,29 +217,32 @@ export const Dashboard = () => {
         },
       };
 
-      if (endpoint.method === 'GET') {
-        const queryParams = endpoint.parameters
-          .filter(p => p.type === 'query' && p.required)
-          .map(p => `${p.name}=${p.name === 'duration' ? '3.0' : 'ambient'}`)
-          .join('&');
+      const queryParams = endpoint.parameters
+        .filter(p => p.type === 'query')
+        .map(p => `${p.name}=${p.name === 'duration' ? '3.0' : 'ambient'}`)
+        .join('&');
 
-        if (queryParams) {
-          url += `?${queryParams}`;
-        }
-      } else if (endpoint.method === 'POST') {
+      if (queryParams) {
+        url += `?${queryParams}`;
+      }
+
+      if (endpoint.method === 'POST' || endpoint.method === 'PUT') {
         const bodyParams: any = {};
         endpoint.parameters
-          .filter(p => p.type === 'body' && p.required)
+          .filter(p => p.type === 'body')
           .forEach(p => {
             if (p.name === 'duration') {
               bodyParams[p.name] = 3.0;
             } else if (p.name === 'category') {
               bodyParams[p.name] = 'ambient';
             } else {
-              bodyParams[p.name] = 'ambient';
+              bodyParams[p.name] = 'test';
             }
           });
-        options.body = JSON.stringify(bodyParams);
+
+        if (Object.keys(bodyParams).length > 0) {
+          options.body = JSON.stringify(bodyParams);
+        }
       }
 
       const response = await fetch(url, options);
