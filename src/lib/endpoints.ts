@@ -1,8 +1,17 @@
+export interface EndpointParameter {
+  name: string;
+  type: 'path' | 'query' | 'body';
+  required: boolean;
+  defaultValue?: string;
+  description?: string;
+}
+
 export interface ParsedEndpoint {
   method: string;
   path: string;
   summary?: string;
   description?: string;
+  parameters: EndpointParameter[];
 }
 
 export function parseEndpointsFromCode(code: string): ParsedEndpoint[] {
@@ -42,8 +51,23 @@ export function parseEndpointsFromCode(code: string): ParsedEndpoint[] {
     if (method && path) {
       let summary = '';
       let description = '';
+      const parameters: EndpointParameter[] = [];
 
-      for (let j = i + 1; j < Math.min(i + 10, lines.length); j++) {
+      // Extract path parameters from the path itself
+      const pathParams = path.match(/\{([^}]+)\}/g);
+      if (pathParams) {
+        pathParams.forEach(param => {
+          const paramName = param.slice(1, -1);
+          parameters.push({
+            name: paramName,
+            type: 'path',
+            required: true
+          });
+        });
+      }
+
+      // Look ahead to find function definition and parameters
+      for (let j = i + 1; j < Math.min(i + 30, lines.length); j++) {
         const nextLine = lines[j].trim();
 
         const summaryMatch = nextLine.match(/summary=["']([^"']+)["']/);
@@ -56,7 +80,66 @@ export function parseEndpointsFromCode(code: string): ParsedEndpoint[] {
           description = descMatch[1];
         }
 
+        // Parse function signature for parameters
         if (nextLine.startsWith('async def') || nextLine.startsWith('def')) {
+          // Get the full function signature (might span multiple lines)
+          let funcSignature = nextLine;
+          let k = j + 1;
+          while (k < lines.length && !funcSignature.includes('):')) {
+            funcSignature += ' ' + lines[k].trim();
+            k++;
+          }
+
+          // Extract parameters from function signature
+          const paramsMatch = funcSignature.match(/\(([^)]+)\)/);
+          if (paramsMatch) {
+            const paramsStr = paramsMatch[1];
+            const paramsList = paramsStr.split(',').map(p => p.trim());
+
+            paramsList.forEach(param => {
+              if (!param || param === 'self') return;
+
+              // Skip path parameters already added
+              const paramNameMatch = param.match(/^([\w_]+)/);
+              if (!paramNameMatch) return;
+              const paramName = paramNameMatch[1];
+
+              // Check if it's already added as path param
+              if (parameters.some(p => p.name === paramName)) return;
+
+              // Detect Query parameters
+              if (param.includes('Query(')) {
+                const hasDefault = param.includes('default=') || param.includes('=');
+                const descriptionMatch = param.match(/description=["']([^"']+)["']/);
+                parameters.push({
+                  name: paramName,
+                  type: 'query',
+                  required: !hasDefault,
+                  description: descriptionMatch ? descriptionMatch[1] : undefined
+                });
+              }
+              // Detect Body parameters (Pydantic models)
+              else if (param.includes(':') && !param.includes('=')) {
+                const typeMatch = param.match(/:\s*([\w]+)/);
+                if (typeMatch && typeMatch[1] !== 'str' && typeMatch[1] !== 'int' && typeMatch[1] !== 'float' && typeMatch[1] !== 'bool') {
+                  parameters.push({
+                    name: paramName,
+                    type: 'body',
+                    required: true
+                  });
+                }
+              }
+              // Plain parameters without Query() are likely query params
+              else if (param.includes(':') && !param.includes('Query(') && !param.includes('Body(')) {
+                const hasDefault = param.includes('=');
+                parameters.push({
+                  name: paramName,
+                  type: 'query',
+                  required: !hasDefault
+                });
+              }
+            });
+          }
           break;
         }
       }
@@ -65,7 +148,8 @@ export function parseEndpointsFromCode(code: string): ParsedEndpoint[] {
         method,
         path,
         summary,
-        description
+        description,
+        parameters
       });
     }
   }
@@ -74,19 +158,37 @@ export function parseEndpointsFromCode(code: string): ParsedEndpoint[] {
 }
 
 export function formatCurlExample(baseUrl: string, endpoint: ParsedEndpoint, apiKey: string): string {
-  const url = `${baseUrl}${endpoint.path}`;
+  let url = `${baseUrl}${endpoint.path}`;
 
-  if (endpoint.method === 'GET') {
-    return `curl -X GET "${url}" \\\n  -H "Authorization: Bearer ${apiKey}"`;
-  } else if (endpoint.method === 'POST') {
-    return `curl -X POST "${url}" \\\n  -H "Authorization: Bearer ${apiKey}" \\\n  -H "Content-Type: application/json" \\\n  -d '{"key": "value"}'`;
-  } else if (endpoint.method === 'PUT') {
-    return `curl -X PUT "${url}" \\\n  -H "Authorization: Bearer ${apiKey}" \\\n  -H "Content-Type: application/json" \\\n  -d '{"key": "value"}'`;
-  } else if (endpoint.method === 'DELETE') {
-    return `curl -X DELETE "${url}" \\\n  -H "Authorization: Bearer ${apiKey}"`;
-  } else if (endpoint.method === 'PATCH') {
-    return `curl -X PATCH "${url}" \\\n  -H "Authorization: Bearer ${apiKey}" \\\n  -H "Content-Type: application/json" \\\n  -d '{"key": "value"}'`;
+  // Replace path parameters with example values
+  const pathParams = endpoint.parameters.filter(p => p.type === 'path');
+  pathParams.forEach(param => {
+    url = url.replace(`{${param.name}}`, `{${param.name}}`);
+  });
+
+  // Add query parameters
+  const queryParams = endpoint.parameters.filter(p => p.type === 'query');
+  if (queryParams.length > 0) {
+    const queryString = queryParams.map(param => {
+      if (param.required) {
+        return `${param.name}={${param.name}}`;
+      }
+      return `${param.name}={${param.name}}`;
+    }).join('&');
+    url += `?${queryString}`;
   }
 
-  return `curl -X ${endpoint.method} "${url}" \\\n  -H "Authorization: Bearer ${apiKey}"`;
+  // Build curl command
+  let curlCmd = `curl -X ${endpoint.method} "${url}" \\\\\n  -H "Authorization: Bearer ${apiKey}"`;
+
+  // Add body for POST/PUT/PATCH
+  const bodyParams = endpoint.parameters.filter(p => p.type === 'body');
+  if (['POST', 'PUT', 'PATCH'].includes(endpoint.method) && bodyParams.length > 0) {
+    curlCmd += ` \\\\\n  -H "Content-Type: application/json" \\\\\n  -d '{"key": "value"}'`;
+  } else if (['POST', 'PUT', 'PATCH'].includes(endpoint.method) && queryParams.length === 0 && pathParams.length === 0) {
+    // Fallback for POST/PUT/PATCH without detected params
+    curlCmd += ` \\\\\n  -H "Content-Type: application/json" \\\\\n  -d '{"key": "value"}'`;
+  }
+
+  return curlCmd;
 }
