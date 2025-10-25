@@ -443,15 +443,6 @@ export const Dashboard = () => {
                           </Button>
                         </div>
                       </div>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="w-full"
-                        onClick={() => window.open(api.endpoint_url, '_blank')}
-                      >
-                        <ExternalLink className="w-3 h-3 mr-2" />
-                        Try API
-                      </Button>
                     </div>
                   </motion.div>
                 ))}

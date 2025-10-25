@@ -307,19 +307,9 @@ export const Marketplace = () => {
                   <Code className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                   <span className="font-medium text-gray-900 dark:text-gray-100">Endpoint URL</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <code className="flex-1 text-sm text-gray-900 dark:text-gray-100 break-all">
-                    {selectedAPI.endpoint_url}
-                  </code>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => window.open(selectedAPI.endpoint_url, '_blank')}
-                    title="Open in new tab"
-                  >
-                    <ExternalLink className="w-4 h-4" />
-                  </Button>
-                </div>
+                <code className="text-sm text-gray-900 dark:text-gray-100 break-all block">
+                  {selectedAPI.endpoint_url}
+                </code>
               </div>
 
               {selectedAPI.code_snapshot && (
