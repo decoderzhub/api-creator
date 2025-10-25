@@ -39,7 +39,7 @@ export const Dashboard = () => {
   const [codeModalOpen, setCodeModalOpen] = useState(false);
   const [viewingCode, setViewingCode] = useState<{ name: string; code: string } | null>(null);
   const [codeCopied, setCodeCopied] = useState(false);
-  const [testingApiId, setTestingApiId] = useState<string | null>(null);
+  const [testingEndpoint, setTestingEndpoint] = useState<string | null>(null);
   const [testResults, setTestResults] = useState<any>(null);
   const [testLoading, setTestLoading] = useState(false);
   const { profile } = useAuth();
@@ -201,21 +201,13 @@ export const Dashboard = () => {
   };
 
   const testAPI = async (api: API, endpoint: ParsedEndpoint) => {
+    const endpointKey = `${api.id}-${endpoint.path}`;
     setTestLoading(true);
-    setTestingApiId(api.id);
+    setTestingEndpoint(endpointKey);
     setTestResults(null);
 
     try {
       let url = api.endpoint_url + endpoint.path;
-
-      const queryParams = endpoint.parameters
-        .filter(p => p.type === 'query' && p.required)
-        .map(p => `${p.name}=${p.name === 'duration' ? '3.0' : 'ambient'}`)
-        .join('&');
-
-      if (queryParams) {
-        url += `?${queryParams}`;
-      }
 
       const options: RequestInit = {
         method: endpoint.method,
@@ -224,6 +216,31 @@ export const Dashboard = () => {
           'Content-Type': 'application/json',
         },
       };
+
+      if (endpoint.method === 'GET') {
+        const queryParams = endpoint.parameters
+          .filter(p => p.type === 'query' && p.required)
+          .map(p => `${p.name}=${p.name === 'duration' ? '3.0' : 'ambient'}`)
+          .join('&');
+
+        if (queryParams) {
+          url += `?${queryParams}`;
+        }
+      } else if (endpoint.method === 'POST') {
+        const bodyParams: any = {};
+        endpoint.parameters
+          .filter(p => p.type === 'body' && p.required)
+          .forEach(p => {
+            if (p.name === 'duration') {
+              bodyParams[p.name] = 3.0;
+            } else if (p.name === 'category') {
+              bodyParams[p.name] = 'ambient';
+            } else {
+              bodyParams[p.name] = 'ambient';
+            }
+          });
+        options.body = JSON.stringify(bodyParams);
+      }
 
       const response = await fetch(url, options);
       const data = await response.json();
@@ -505,14 +522,14 @@ export const Dashboard = () => {
                                         <Button
                                           size="sm"
                                           onClick={() => testAPI(api, endpoint)}
-                                          disabled={testLoading && testingApiId === api.id}
+                                          disabled={testLoading && testingEndpoint === `${api.id}-${endpoint.path}`}
                                           className="w-full"
                                         >
                                           <Play className="w-3 h-3 mr-2" />
-                                          {testLoading && testingApiId === api.id ? 'Testing...' : 'Test Endpoint'}
+                                          {testLoading && testingEndpoint === `${api.id}-${endpoint.path}` ? 'Testing...' : 'Test Endpoint'}
                                         </Button>
 
-                                        {testingApiId === api.id && testResults && (
+                                        {testingEndpoint === `${api.id}-${endpoint.path}` && testResults && (
                                           <div className="space-y-2">
                                             {testResults.results && Array.isArray(testResults.results) ? (
                                               testResults.results.slice(0, 3).map((sound: any, soundIdx: number) => (
