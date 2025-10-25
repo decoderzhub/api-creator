@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MessageSquare, X, Send, Sparkles, Image, Music, Code, Globe, Key, Loader2 } from 'lucide-react';
 import { Button } from '../ui/Button';
+import ReactMarkdown from 'react-markdown';
 
 interface Message {
   id: string;
@@ -53,6 +54,15 @@ export const AIAssistant = () => {
   ]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
 
   const handleSend = async () => {
     if (!inputValue.trim() || isLoading) return;
@@ -211,7 +221,13 @@ export const AIAssistant = () => {
                         : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100'
                     }`}
                   >
-                    <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                    {message.role === 'user' ? (
+                      <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                    ) : (
+                      <div className="prose prose-sm max-w-none dark:prose-invert prose-p:my-2 prose-ul:my-2 prose-ol:my-2 prose-li:my-0">
+                        <ReactMarkdown>{message.content}</ReactMarkdown>
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}
@@ -223,6 +239,8 @@ export const AIAssistant = () => {
                   </div>
                 </div>
               )}
+
+              <div ref={messagesEndRef} />
 
               <div className="space-y-2">
                 <p className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">
