@@ -14,7 +14,10 @@ import {
   Lock,
   BarChart3,
   Moon,
-  Sun
+  Sun,
+  Code2,
+  Workflow,
+  Layers
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Card, CardContent } from '../components/ui/Card';
@@ -26,6 +29,11 @@ const features = [
     icon: Sparkles,
     title: 'AI-Powered Generation',
     description: 'Describe your API in plain English and watch it come to life instantly with cutting-edge AI technology',
+  },
+  {
+    icon: Code2,
+    title: 'AI Integration Assistant',
+    description: 'Generate production-ready integration code for Salesforce, Slack, Discord, GitHub Actions, and more in any language',
   },
   {
     icon: Code,
@@ -52,6 +60,11 @@ const features = [
     title: 'Global Marketplace',
     description: 'Publish your APIs and monetize them in our growing marketplace with millions of developers',
   },
+  {
+    icon: Workflow,
+    title: 'Multi-Language SDKs',
+    description: 'Automatically generate client libraries in Python, JavaScript, TypeScript, Ruby, Go, and PHP',
+  },
 ];
 
 const stats = [
@@ -63,24 +76,34 @@ const stats = [
 
 const useCases = [
   {
-    title: 'SMS & Notification APIs',
-    description: 'Build APIs for sending alerts, notifications, and messages across multiple channels',
-    icon: '📱',
+    title: 'Salesforce Integration',
+    description: 'Sync your API data with Salesforce CRM - create leads, update opportunities, and manage contacts automatically',
+    icon: '☁️',
   },
   {
-    title: 'Data Processing APIs',
-    description: 'Create APIs for data transformation, validation, and enrichment workflows',
-    icon: '⚙️',
+    title: 'Slack Notifications',
+    description: 'Send real-time alerts and reports to Slack channels when your API events occur',
+    icon: '💬',
   },
   {
-    title: 'Integration APIs',
-    description: 'Connect different services and platforms with custom integration endpoints',
+    title: 'GitHub Actions Workflows',
+    description: 'Integrate your API into CI/CD pipelines with automated GitHub Actions workflows',
+    icon: '🔄',
+  },
+  {
+    title: 'Google Sheets Export',
+    description: 'Export API data to Google Sheets for easy analysis, reporting, and dashboard creation',
+    icon: '📊',
+  },
+  {
+    title: 'Discord Bots & Webhooks',
+    description: 'Create Discord integrations that respond to your API events with rich embedded messages',
+    icon: '🎮',
+  },
+  {
+    title: 'Custom Webhook Handlers',
+    description: 'Process incoming webhooks from any service and trigger your API with validated data',
     icon: '🔗',
-  },
-  {
-    title: 'Webhook Handlers',
-    description: 'Process webhooks from third-party services with custom business logic',
-    icon: '🎣',
   },
 ];
 
@@ -203,7 +226,7 @@ export const Landing = () => {
           >
             Transform your ideas into production-ready APIs in seconds. No coding required.
             <br className="hidden md:block" />
-            Just describe what you want, and our AI builds, deploys, and manages it for you.
+            Our AI builds, deploys, and generates integration code for Salesforce, Slack, GitHub, and more.
           </motion.p>
 
           <motion.div
@@ -389,45 +412,101 @@ export const Landing = () => {
         </div>
       </section>
 
-      <section className="max-w-7xl mx-auto px-6 py-20">
-        <motion.div
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          viewport={{ once: true }}
-          className="text-center mb-16"
-        >
-          <h2 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-gray-100 mb-4">
-            Built for Every Use Case
-          </h2>
-          <p className="text-xl text-gray-600 dark:text-gray-400">
-            From simple webhooks to complex integrations
-          </p>
-        </motion.div>
+      <section className="bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-gray-900 dark:to-blue-950 py-20">
+        <div className="max-w-7xl mx-auto px-6">
+          <motion.div
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+            className="text-center mb-16"
+          >
+            <Badge variant="info" className="mb-4">
+              <Code2 className="w-4 h-4 inline mr-2" />
+              AI Integration Assistant
+            </Badge>
+            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-gray-100 mb-4">
+              Connect Anywhere in Seconds
+            </h2>
+            <p className="text-xl text-gray-600 dark:text-gray-400 max-w-3xl mx-auto">
+              Our AI generates production-ready integration code for your APIs. No more wrestling with documentation or SDK limitations.
+            </p>
+          </motion.div>
 
-        <div className="grid md:grid-cols-2 gap-6">
-          {useCases.map((useCase, index) => (
-            <motion.div
-              key={useCase.title}
-              initial={{ opacity: 0, x: index % 2 === 0 ? -20 : 20 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: index * 0.1 }}
-            >
-              <Card hover className="h-full">
-                <CardContent className="p-6 flex gap-4">
-                  <div className="text-4xl">{useCase.icon}</div>
-                  <div>
-                    <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-2">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="bg-white dark:bg-gray-900 rounded-2xl p-8 mb-12 shadow-xl"
+          >
+            <div className="grid md:grid-cols-3 gap-8 mb-8">
+              <div className="text-center">
+                <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-blue-700 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-blue-500/30">
+                  <Layers className="w-8 h-8 text-white" />
+                </div>
+                <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-2">
+                  7+ Integration Types
+                </h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Salesforce, Slack, Discord, GitHub, Google Sheets, and more
+                </p>
+              </div>
+              <div className="text-center">
+                <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-blue-700 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-blue-500/30">
+                  <Code className="w-8 h-8 text-white" />
+                </div>
+                <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-2">
+                  6 Programming Languages
+                </h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Python, JavaScript, TypeScript, Ruby, Go, PHP
+                </p>
+              </div>
+              <div className="text-center">
+                <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-blue-700 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-blue-500/30">
+                  <Workflow className="w-8 h-8 text-white" />
+                </div>
+                <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-2">
+                  Complete with Examples
+                </h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Dependencies, setup instructions, and usage examples included
+                </p>
+              </div>
+            </div>
+            <div className="bg-gray-900 rounded-xl p-6 font-mono text-sm overflow-x-auto">
+              <div className="text-gray-400 mb-2"># Example: Send Slack notification when API event occurs</div>
+              <div className="text-blue-400">import</div> <div className="text-white inline">requests</div>
+              <div className="mt-2 text-green-400">"Generate a Slack integration that sends formatted messages</div>
+              <div className="text-green-400">when my inventory API detects low stock levels"</div>
+              <div className="mt-4 text-cyan-400">→ Complete Python code with error handling</div>
+              <div className="text-cyan-400">→ Slack webhook setup instructions</div>
+              <div className="text-cyan-400">→ Message formatting examples</div>
+            </div>
+          </motion.div>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {useCases.map((useCase, index) => (
+              <motion.div
+                key={useCase.title}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: index * 0.1 }}
+              >
+                <Card hover className="h-full bg-white dark:bg-gray-900">
+                  <CardContent className="p-6">
+                    <div className="text-4xl mb-4">{useCase.icon}</div>
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-2">
                       {useCase.title}
                     </h3>
-                    <p className="text-gray-600 dark:text-gray-400">
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
                       {useCase.description}
                     </p>
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-          ))}
+                  </CardContent>
+                </Card>
+              </motion.div>
+            ))}
+          </div>
         </div>
       </section>
 
