@@ -319,9 +319,11 @@ export const Marketplace = () => {
                     <span className="font-medium text-gray-900 dark:text-gray-100">API Code</span>
                   </div>
                   {(profile?.is_admin || profile?.plan === 'pro' || profile?.plan === 'enterprise' || selectedAPI.user_id === profile?.id) ? (
-                    <pre className="text-sm text-gray-900 dark:text-gray-100 overflow-x-auto">
-                      <code>{selectedAPI.code_snapshot}</code>
-                    </pre>
+                    <div className="max-h-96 overflow-y-auto bg-gray-900 dark:bg-black rounded-lg p-3">
+                      <pre className="text-xs text-gray-100 overflow-x-auto">
+                        <code>{selectedAPI.code_snapshot}</code>
+                      </pre>
+                    </div>
                   ) : (
                     <div className="bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-950/30 dark:to-purple-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-4 text-center">
                       <p className="text-gray-700 dark:text-gray-300 mb-3">
