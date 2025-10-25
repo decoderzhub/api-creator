@@ -12,33 +12,33 @@ interface Message {
 const examplePrompts = [
   {
     icon: Music,
-    title: 'Sound API',
-    prompt: 'Create an API that integrates with Freesound.org to search and retrieve audio files based on keywords. Include authentication and rate limiting.',
-    category: 'Audio'
+    title: 'How do I create a sound API?',
+    prompt: 'How do I create an API that searches for audio files on Freesound.org? I want users to search by keywords and get audio results.',
+    category: 'Getting Started'
   },
   {
     icon: Image,
-    title: 'Image Processing',
-    prompt: 'Build an API that uses Cloudinary to upload, transform, and optimize images. Support multiple image formats and provide URL generation.',
-    category: 'Images'
-  },
-  {
-    icon: Globe,
-    title: 'Weather Data',
-    prompt: 'Create an API that fetches weather data from OpenWeatherMap and provides current conditions and forecasts. Include caching to reduce API calls.',
-    category: 'Data'
-  },
-  {
-    icon: Code,
-    title: 'GitHub Integration',
-    prompt: 'Build an API that integrates with GitHub to list repositories, create issues, and manage pull requests using my stored GitHub API key.',
-    category: 'Integration'
+    title: 'Image processing help',
+    prompt: 'I want to create an API for image uploads and transformations. What should I type in the Generate page?',
+    category: 'Getting Started'
   },
   {
     icon: Key,
-    title: 'Using Your API Keys',
-    prompt: 'When generating APIs that require third-party services, reference your stored API keys by name. Example: "Use my OpenAI API key for text generation"',
-    category: 'Tip'
+    title: 'How do I use my API keys?',
+    prompt: 'I have an OpenWeatherMap API key. How do I use it when generating my weather API?',
+    category: 'Help'
+  },
+  {
+    icon: Code,
+    title: 'Where do I start?',
+    prompt: 'I\'m new to API-Creator. Can you walk me through creating my first API step by step?',
+    category: 'Tutorial'
+  },
+  {
+    icon: Globe,
+    title: 'Example prompt for weather',
+    prompt: 'Can you show me an example of what to type on the Generate page to create a weather API?',
+    category: 'Examples'
   }
 ];
 
@@ -48,7 +48,7 @@ export const AIAssistant = () => {
     {
       id: '1',
       role: 'assistant',
-      content: 'Hello! I can help you generate APIs with various integrations. Click on any example below or ask me anything!'
+      content: 'Hi! I\'m here to help you use API-Creator. Ask me how to:\n\n• Generate your first API\n• Store and use API keys\n• Navigate the platform\n• Get example prompts\n\nClick any example below or ask me anything!'
     }
   ]);
   const [inputValue, setInputValue] = useState('');
@@ -280,7 +280,7 @@ export const AIAssistant = () => {
                 </Button>
               </div>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                Tip: Store your API keys in the API Keys page before generating!
+                💡 Ask me how to use any feature on the platform!
               </p>
             </div>
           </motion.div>

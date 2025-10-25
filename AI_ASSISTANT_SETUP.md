@@ -55,12 +55,61 @@ The AI Assistant is **already configured** in your FastAPI backend! The Anthropi
 
 4. **Type or click example prompts** - watch responses stream!
 
+## What It Does
+
+The AI Assistant helps users understand **how to use the API-Creator platform**, NOT how to write code.
+
+**Platform-Focused Guidance:**
+- ✅ Guides users through the Generate page
+- ✅ Shows example prompts to type
+- ✅ Explains how to store and use API keys
+- ✅ Walks through platform features
+- ✅ Provides step-by-step instructions
+
+**It Will NOT:**
+- ❌ Provide raw code snippets
+- ❌ Explain how to manually code APIs
+- ❌ Give programming tutorials
+
+**Example Interaction:**
+
+```
+User: "How do I create a weather API?"
+
+AI Response:
+"Here's how to create a weather API using API-Creator:
+
+1. Store your API key (if needed):
+   - Go to the API Keys page
+   - Click 'Add New Key'
+   - Name: 'My Weather Key'
+   - Paste your OpenWeatherMap API key
+
+2. Generate the API:
+   - Go to the Generate page
+   - In the description field, type:
+
+   'Create an API that fetches current weather and forecasts
+   from OpenWeatherMap. Use my Weather Key for authentication.
+   Include endpoints for current weather by city and 5-day
+   forecast. Add caching to reduce API calls.'
+
+3. Deploy & Use:
+   - Click Generate
+   - Wait for the API to be created
+   - You'll get your API endpoint and documentation
+
+The platform handles all the code, deployment, and
+authentication automatically!"
+```
+
 ## Testing
 
-Try these prompts:
+Try these platform-focused prompts:
 - "How do I create an API for weather data?"
-- "What's the best way to store API keys?"
-- "Can you help me with image processing APIs?"
+- "I have a Freesound API key, how do I use it?"
+- "Can you show me what to type in the Generate page?"
+- "Walk me through creating my first API step by step"
 
 ## Technical Details
 
