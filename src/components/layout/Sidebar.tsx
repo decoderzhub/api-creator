@@ -17,10 +17,10 @@ export const Sidebar = ({ onLogout }: SidebarProps) => {
   ];
 
   const bottomNavItems = [
-    { path: '/api-keys', icon: Key, label: 'API Keys' },
     { path: '/feedback', icon: MessageSquare, label: 'Feedback' },
-    { path: '/profile', icon: User, label: 'Profile' },
+    { path: '/api-keys', icon: Key, label: 'API Keys' },
     { path: '/billing', icon: CreditCard, label: 'Billing' },
+    { path: '/profile', icon: User, label: 'Profile' },
   ];
 
   return (
