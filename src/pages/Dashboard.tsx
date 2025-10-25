@@ -1,7 +1,13 @@
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import {
+  Trash2, Globe, Code, Check, Edit2 as Edit, X, Play, Copy,
+  BookmarkX, Bookmark, Key, ChevronDown, ChevronUp, List, Zap
+} from 'lucide-react';
 import { Card, CardContent, CardHeader } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
+import { Badge } from '../components/ui/Badge';
+import { AudioPlayer } from '../components/ui/AudioPlayer';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../hooks/useToast';
