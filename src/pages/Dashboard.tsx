@@ -13,11 +13,21 @@ import { API } from '../lib/types';
 import { parseEndpointsFromCode, formatCurlExample, ParsedEndpoint } from '../lib/endpoints';
 import { apiService } from '../lib/api';
 
+interface SavedAPI {
+  id: string;
+  user_id: string;
+  api_id: string;
+  user_api_key: string | null;
+  created_at: string;
+  apis: API;
+}
+
 export const Dashboard = () => {
   const [apis, setApis] = useState<API[]>([]);
-  const [savedApis, setSavedApis] = useState<API[]>([]);
+  const [savedApis, setSavedApis] = useState<SavedAPI[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingSaved, setLoadingSaved] = useState(true);
+  const [generatingKey, setGeneratingKey] = useState<string | null>(null);
   const [stats, setStats] = useState({
     totalAPIs: 0,
     totalCalls: 0,
@@ -92,14 +102,13 @@ export const Dashboard = () => {
     try {
       const { data, error } = await supabase
         .from('saved_apis')
-        .select('api_id, apis(*)')
+        .select('id, api_id, user_id, user_api_key, created_at, apis(*)')
         .eq('user_id', profile.id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
 
-      const apiData = data?.map(item => item.apis).filter(Boolean) || [];
-      setSavedApis(apiData as API[]);
+      setSavedApis(data as SavedAPI[] || []);
     } catch (err: any) {
       console.error('Failed to load saved APIs:', err);
     } finally {
@@ -107,15 +116,39 @@ export const Dashboard = () => {
     }
   };
 
-  const unsaveAPI = async (apiId: string) => {
+  const generateAPIKey = async (savedApiId: string) => {
+    if (!profile) return;
+
+    setGeneratingKey(savedApiId);
+    try {
+      const apiKey = `ak_${Math.random().toString(36).substring(2, 15)}${Math.random().toString(36).substring(2, 15)}`;
+
+      const { error } = await supabase
+        .from('saved_apis')
+        .update({ user_api_key: apiKey })
+        .eq('id', savedApiId)
+        .eq('user_id', profile.id);
+
+      if (error) throw error;
+
+      addToast('API Key generated successfully!', 'success');
+      await loadSavedAPIs();
+    } catch (err: any) {
+      addToast(err.message || 'Failed to generate API key', 'error');
+    } finally {
+      setGeneratingKey(null);
+    }
+  };
+
+  const unsaveAPI = async (savedApiId: string) => {
     if (!profile) return;
 
     try {
       const { error } = await supabase
         .from('saved_apis')
         .delete()
-        .eq('user_id', profile.id)
-        .eq('api_id', apiId);
+        .eq('id', savedApiId)
+        .eq('user_id', profile.id);
 
       if (error) throw error;
 
@@ -407,9 +440,11 @@ export const Dashboard = () => {
               </div>
             ) : (
               <div className="space-y-4">
-                {savedApis.map((api) => (
+                {savedApis.map((savedApi) => {
+                  const api = savedApi.apis;
+                  return (
                   <motion.div
-                    key={api.id}
+                    key={savedApi.id}
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:shadow-md transition-shadow"
@@ -430,18 +465,19 @@ export const Dashboard = () => {
 
                         {api.code_snapshot && (() => {
                           const endpoints = parseEndpointsFromCode(api.code_snapshot);
+                          const apiKey = savedApi.user_api_key || 'Generate API Key below';
                           return endpoints.length > 0 && (
                             <div className="mb-3">
                               <button
-                                onClick={() => setExpandedApiId(expandedApiId === api.id ? null : api.id)}
+                                onClick={() => setExpandedApiId(expandedApiId === savedApi.id ? null : savedApi.id)}
                                 className="flex items-center gap-2 text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
                               >
                                 <List className="w-4 h-4" />
                                 {endpoints.length} Endpoint{endpoints.length !== 1 ? 's' : ''} Available
-                                {expandedApiId === api.id ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                                {expandedApiId === savedApi.id ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                               </button>
 
-                              {expandedApiId === api.id && (
+                              {expandedApiId === savedApi.id && (
                                 <motion.div
                                   initial={{ opacity: 0, height: 0 }}
                                   animate={{ opacity: 1, height: 'auto' }}
@@ -449,7 +485,7 @@ export const Dashboard = () => {
                                   className="mt-3 space-y-3 pl-6 border-l-2 border-blue-200 dark:border-blue-800"
                                 >
                                   {endpoints.map((endpoint, idx) => {
-                                    const curlExample = formatCurlExample(api.endpoint_url, endpoint, 'your-api-key');
+                                    const curlExample = formatCurlExample(api.endpoint_url, endpoint, apiKey);
                                     return (
                                       <div key={idx} className="text-xs border border-gray-200 dark:border-gray-700 rounded p-2">
                                         <div className="flex items-center gap-2 mb-1">
@@ -515,7 +551,7 @@ export const Dashboard = () => {
                           );
                         })()}
 
-                        <div className="space-y-2">
+                        <div className="space-y-3 mb-4">
                           <div>
                             <p className="text-xs text-gray-500 dark:text-gray-500 mb-1">Endpoint</p>
                             <div className="flex items-center gap-2">
@@ -527,10 +563,78 @@ export const Dashboard = () => {
                               </Button>
                             </div>
                           </div>
+
+                          {savedApi.user_api_key && (
+                            <div>
+                              <p className="text-xs text-gray-500 dark:text-gray-500 mb-1">Your API Key</p>
+                              <div className="flex items-center gap-2">
+                                <code className="flex-1 px-2 py-1 bg-gray-100 dark:bg-gray-900 rounded text-xs font-mono text-gray-900 dark:text-gray-100">
+                                  {savedApi.user_api_key}
+                                </code>
+                                <Button size="sm" variant="ghost" onClick={() => copyToClipboard(savedApi.user_api_key!)}>
+                                  <Copy className="w-3 h-3" />
+                                </Button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="flex gap-2">
+                          {profile?.subscription_tier === 'paid' && api.code_snapshot && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                setViewingCode({ name: api.name, code: api.code_snapshot! });
+                                setCodeModalOpen(true);
+                              }}
+                            >
+                              <Code className="w-4 h-4 mr-2" />
+                              View Code
+                            </Button>
+                          )}
+                          {!savedApi.user_api_key ? (
+                            <Button
+                              size="sm"
+                              onClick={() => generateAPIKey(savedApi.id)}
+                              disabled={generatingKey === savedApi.id}
+                            >
+                              {generatingKey === savedApi.id ? (
+                                <>
+                                  <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                                  Generating...
+                                </>
+                              ) : (
+                                <>
+                                  <Zap className="w-4 h-4 mr-2" />
+                                  Generate API Key
+                                </>
+                              )}
+                            </Button>
+                          ) : (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => generateAPIKey(savedApi.id)}
+                              disabled={generatingKey === savedApi.id}
+                            >
+                              {generatingKey === savedApi.id ? (
+                                <>
+                                  <div className="w-3 h-3 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mr-2"></div>
+                                  Regenerating...
+                                </>
+                              ) : (
+                                <>
+                                  <Zap className="w-4 h-4 mr-2" />
+                                  Regenerate Key
+                                </>
+                              )}
+                            </Button>
+                          )}
                         </div>
                       </div>
                       <button
-                        onClick={() => unsaveAPI(api.id)}
+                        onClick={() => unsaveAPI(savedApi.id)}
                         className="p-2 hover:bg-red-100 dark:hover:bg-red-900/30 rounded transition-colors"
                         title="Remove from saved"
                       >
@@ -538,10 +642,11 @@ export const Dashboard = () => {
                       </button>
                     </div>
                     <div className="flex items-center gap-6 text-sm text-gray-600 dark:text-gray-400">
-                      <span>Created: {new Date(api.created_at).toLocaleDateString()}</span>
+                      <span>Created: {new Date(savedApi.created_at).toLocaleDateString()}</span>
                     </div>
                   </motion.div>
-                ))}
+                );
+                })}
               </div>
             )}
           </CardContent>
