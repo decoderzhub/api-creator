@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Trash2, Globe, Code, Check, Edit2 as Edit, X, Play, Copy,
+  Trash2, Globe, Code, Check, Edit2, X, Play, Copy,
   BookmarkX, Bookmark, Key, ChevronDown, ChevronUp, List, Zap
 } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '../components/ui/Card';
