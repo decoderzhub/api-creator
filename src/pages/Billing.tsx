@@ -5,6 +5,8 @@ import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../hooks/useToast';
+import { useState } from 'react';
+import { API_BASE_URL } from '../lib/endpoints';
 
 const plans = [
   {
@@ -65,14 +67,68 @@ const plans = [
 ];
 
 export const Billing = () => {
-  const { profile } = useAuth();
+  const { profile, session } = useAuth();
   const { addToast } = useToast();
+  const [loading, setLoading] = useState(false);
 
-  const handleUpgrade = (tier: string) => {
+  const handleUpgrade = async (tier: string) => {
     if (tier === 'enterprise') {
       addToast('Please contact sales@apibuilder.dev for enterprise plans', 'info');
-    } else {
-      addToast('Stripe integration coming soon!', 'info');
+      return;
+    }
+
+    if (tier === 'free') {
+      return;
+    }
+
+    if (!session) {
+      addToast('Please log in to upgrade', 'error');
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const priceId = tier === 'pro'
+        ? import.meta.env.VITE_STRIPE_PRO_PRICE_ID
+        : import.meta.env.VITE_STRIPE_ENTERPRISE_PRICE_ID;
+
+      if (!priceId) {
+        addToast('Stripe is not configured. Please contact support.', 'error');
+        setLoading(false);
+        return;
+      }
+
+      const response = await fetch(`${API_BASE_URL}/billing/create-checkout-session`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          price_id: priceId,
+          success_url: `${window.location.origin}/billing?success=true`,
+          cancel_url: `${window.location.origin}/billing?canceled=true`,
+          mode: 'subscription',
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || 'Failed to create checkout session');
+      }
+
+      const data = await response.json();
+
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        throw new Error('No checkout URL returned');
+      }
+    } catch (error: any) {
+      console.error('Upgrade error:', error);
+      addToast(error.message || 'Failed to initiate upgrade', 'error');
+      setLoading(false);
     }
   };
 
@@ -145,10 +201,10 @@ export const Billing = () => {
                   <Button
                     className="w-full"
                     variant={isCurrentPlan ? 'outline' : 'primary'}
-                    disabled={isCurrentPlan}
+                    disabled={isCurrentPlan || loading}
                     onClick={() => handleUpgrade(plan.tier)}
                   >
-                    {isCurrentPlan ? 'Current Plan' : plan.cta}
+                    {loading ? 'Loading...' : isCurrentPlan ? 'Current Plan' : plan.cta}
                   </Button>
                 </CardContent>
               </Card>

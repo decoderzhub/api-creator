@@ -24,6 +24,7 @@ from routes.suggestions import router as suggestions_router
 from routes.rate_limit import router as rate_limit_router
 from routes.ai_chat import router as ai_chat_router
 from routes.integration import router as integration_router
+from routes.billing import router as billing_router
 from logger import logger, generate_request_id
 from monitoring import init_sentry, metrics_collector
 import sentry_sdk
@@ -52,6 +53,7 @@ app.include_router(suggestions_router, prefix="/api", tags=["AI Suggestions"])
 app.include_router(rate_limit_router, prefix="/api", tags=["Rate Limiting"])
 app.include_router(ai_chat_router, prefix="/api", tags=["AI Chat"])
 app.include_router(integration_router, prefix="/api", tags=["Integration"])
+app.include_router(billing_router, prefix="/api", tags=["Billing"])
 
 app.add_middleware(
     CORSMiddleware,
