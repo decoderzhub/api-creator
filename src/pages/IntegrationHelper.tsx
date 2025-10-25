@@ -47,13 +47,83 @@ const LANGUAGES = [
 ];
 
 const INTEGRATION_TYPES = [
-  { value: 'custom', label: 'Custom Integration', description: 'General purpose integration code', icon: '⚙️' },
-  { value: 'salesforce', label: 'Salesforce', description: 'Sync with Salesforce CRM', icon: '☁️' },
-  { value: 'slack', label: 'Slack', description: 'Send notifications to Slack', icon: '💬' },
-  { value: 'github_actions', label: 'GitHub Actions', description: 'CI/CD workflow integration', icon: '🔄' },
-  { value: 'google_sheets', label: 'Google Sheets', description: 'Export data to spreadsheets', icon: '📊' },
-  { value: 'webhook', label: 'Webhook Handler', description: 'Receive webhook events', icon: '🔗' },
-  { value: 'discord', label: 'Discord', description: 'Send messages to Discord', icon: '🎮' },
+  {
+    value: 'custom',
+    label: 'Custom Integration',
+    description: 'General purpose integration code',
+    icon: '⚙️',
+    examples: [
+      'Call my API every hour and log the results',
+      'Fetch data from my API and process it with custom business logic',
+      'Create a scheduled task that calls my API with different parameters'
+    ]
+  },
+  {
+    value: 'salesforce',
+    label: 'Salesforce',
+    description: 'Sync with Salesforce CRM',
+    icon: '☁️',
+    examples: [
+      'Create a new Salesforce lead whenever my API receives a new customer',
+      'Update Salesforce opportunities when my API data changes',
+      'Sync contact information between my API and Salesforce'
+    ]
+  },
+  {
+    value: 'slack',
+    label: 'Slack',
+    description: 'Send notifications to Slack',
+    icon: '💬',
+    examples: [
+      'Send a Slack notification when my API detects an error',
+      'Post daily summary reports from my API to a Slack channel',
+      'Alert the team when inventory levels drop below threshold'
+    ]
+  },
+  {
+    value: 'github_actions',
+    label: 'GitHub Actions',
+    description: 'CI/CD workflow integration',
+    icon: '🔄',
+    examples: [
+      'Call my API after every successful deployment',
+      'Run API tests in GitHub Actions on every push',
+      'Trigger my API when a new release is created'
+    ]
+  },
+  {
+    value: 'google_sheets',
+    label: 'Google Sheets',
+    description: 'Export data to spreadsheets',
+    icon: '📊',
+    examples: [
+      'Export my API data to a Google Sheet every day',
+      'Create a live dashboard in Google Sheets from my API',
+      'Append new records from my API to a Google Sheet'
+    ]
+  },
+  {
+    value: 'webhook',
+    label: 'Webhook Handler',
+    description: 'Receive webhook events',
+    icon: '🔗',
+    examples: [
+      'Process incoming webhook data and call my API',
+      'Validate webhook signatures and trigger my API',
+      'Transform webhook payload and send to my API'
+    ]
+  },
+  {
+    value: 'discord',
+    label: 'Discord',
+    description: 'Send messages to Discord',
+    icon: '🎮',
+    examples: [
+      'Send Discord notifications when my API events occur',
+      'Create a Discord bot that queries my API',
+      'Post formatted updates to Discord channels'
+    ]
+  },
 ];
 
 export default function IntegrationHelper() {
@@ -252,12 +322,12 @@ export default function IntegrationHelper() {
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
                   Integration Type
                 </label>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="max-h-96 overflow-y-auto pr-2 space-y-3">
                   {INTEGRATION_TYPES.map((type) => (
                     <button
                       key={type.value}
                       onClick={() => setIntegrationType(type.value)}
-                      className={`p-3 rounded-lg border-2 transition-all text-left ${
+                      className={`w-full p-3 rounded-lg border-2 transition-all text-left ${
                         integrationType === type.value
                           ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
                           : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
@@ -268,6 +338,26 @@ export default function IntegrationHelper() {
                         <span className="font-medium text-gray-900 dark:text-white text-sm">{type.label}</span>
                       </div>
                       <p className="text-xs text-gray-500 dark:text-gray-400">{type.description}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-gray-700">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                  Example Prompts
+                  <span className="text-xs text-gray-500 dark:text-gray-400 font-normal ml-2">
+                    (Click to use)
+                  </span>
+                </label>
+                <div className="max-h-48 overflow-y-auto pr-2 space-y-2">
+                  {INTEGRATION_TYPES.find(t => t.value === integrationType)?.examples.map((example, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => setDescription(example)}
+                      className="w-full text-left px-4 py-3 rounded-lg bg-gray-50 dark:bg-gray-900 hover:bg-blue-50 dark:hover:bg-blue-900/20 border border-gray-200 dark:border-gray-700 hover:border-blue-500 transition-all"
+                    >
+                      <p className="text-sm text-gray-700 dark:text-gray-300">{example}</p>
                     </button>
                   ))}
                 </div>
