@@ -179,15 +179,15 @@ export function formatCurlExample(baseUrl: string, endpoint: ParsedEndpoint, api
   }
 
   // Build curl command
-  let curlCmd = `curl -X ${endpoint.method} "${url}" \\\\\n  -H "Authorization: Bearer ${apiKey}"`;
+  let curlCmd = `curl -X ${endpoint.method} "${url}" \\\n  -H "Authorization: Bearer ${apiKey}"`;
 
   // Add body for POST/PUT/PATCH
   const bodyParams = endpoint.parameters.filter(p => p.type === 'body');
   if (['POST', 'PUT', 'PATCH'].includes(endpoint.method) && bodyParams.length > 0) {
-    curlCmd += ` \\\\\n  -H "Content-Type: application/json" \\\\\n  -d '{"key": "value"}'`;
+    curlCmd += ` \\\n  -H "Content-Type: application/json" \\\n  -d '{"key": "value"}'`;
   } else if (['POST', 'PUT', 'PATCH'].includes(endpoint.method) && queryParams.length === 0 && pathParams.length === 0) {
     // Fallback for POST/PUT/PATCH without detected params
-    curlCmd += ` \\\\\n  -H "Content-Type: application/json" \\\\\n  -d '{"key": "value"}'`;
+    curlCmd += ` \\\n  -H "Content-Type: application/json" \\\n  -d '{"key": "value"}'`;
   }
 
   return curlCmd;
