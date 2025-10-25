@@ -4,6 +4,7 @@ export interface User {
   plan: 'free' | 'pro' | 'enterprise';
   stripe_customer_id?: string;
   api_generation_count: number;
+  is_admin?: boolean;
   created_at: string;
   updated_at: string;
 }

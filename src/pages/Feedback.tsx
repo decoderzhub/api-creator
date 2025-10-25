@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { MessageSquare, Plus, Star, AlertCircle, Lightbulb, TrendingUp, MessageCircle } from 'lucide-react';
+import { MessageSquare, Plus, Star, AlertCircle, Lightbulb, TrendingUp, MessageCircle, Trash2, Reply, Shield } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
@@ -12,11 +12,15 @@ import { useToast } from '../hooks/useToast';
 
 interface Feedback {
   id: string;
+  user_id: string;
   title: string;
   description: string;
   category: 'bug' | 'feature' | 'improvement' | 'general';
   rating: number;
   status: string;
+  admin_response?: string;
+  admin_responder_id?: string;
+  responded_at?: string;
   created_at: string;
 }
 
@@ -39,22 +43,31 @@ export const Feedback = () => {
     rating: 0
   });
   const [submitting, setSubmitting] = useState(false);
+  const [showResponseModal, setShowResponseModal] = useState(false);
+  const [selectedFeedback, setSelectedFeedback] = useState<Feedback | null>(null);
+  const [adminResponse, setAdminResponse] = useState('');
   const { profile } = useAuth();
   const { addToast } = useToast();
+  const isAdmin = profile?.is_admin || false;
 
   useEffect(() => {
     if (profile) {
       loadFeedback();
     }
-  }, [profile]);
+  }, [profile, isAdmin]);
 
   const loadFeedback = async () => {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('platform_feedback')
         .select('*')
-        .eq('user_id', profile!.id)
         .order('created_at', { ascending: false });
+
+      if (!isAdmin) {
+        query = query.eq('user_id', profile!.id);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
       setFeedbackList(data || []);
@@ -93,6 +106,59 @@ export const Feedback = () => {
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handleDeleteFeedback = async (feedbackId: string) => {
+    if (!confirm('Are you sure you want to delete this feedback?')) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('platform_feedback')
+        .delete()
+        .eq('id', feedbackId);
+
+      if (error) throw error;
+      addToast('Feedback deleted successfully', 'success');
+      loadFeedback();
+    } catch (error: any) {
+      addToast(error.message, 'error');
+    }
+  };
+
+  const handleRespondToFeedback = async () => {
+    if (!adminResponse.trim()) {
+      addToast('Please enter a response', 'error');
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('platform_feedback')
+        .update({
+          admin_response: adminResponse,
+          admin_responder_id: profile!.id,
+          responded_at: new Date().toISOString(),
+          status: 'reviewed'
+        })
+        .eq('id', selectedFeedback!.id);
+
+      if (error) throw error;
+      addToast('Response added successfully', 'success');
+      setShowResponseModal(false);
+      setAdminResponse('');
+      setSelectedFeedback(null);
+      loadFeedback();
+    } catch (error: any) {
+      addToast(error.message, 'error');
+    }
+  };
+
+  const openResponseModal = (feedback: Feedback) => {
+    setSelectedFeedback(feedback);
+    setAdminResponse(feedback.admin_response || '');
+    setShowResponseModal(true);
   };
 
   const getCategoryIcon = (category: string) => {
@@ -144,6 +210,55 @@ export const Feedback = () => {
 
   return (
     <>
+      <Modal
+        isOpen={showResponseModal}
+        onClose={() => {
+          setShowResponseModal(false);
+          setSelectedFeedback(null);
+          setAdminResponse('');
+        }}
+        title="Respond to Feedback"
+        maxWidth="lg"
+      >
+        <div className="space-y-4">
+          {selectedFeedback && (
+            <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+              <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                {selectedFeedback.title}
+              </h4>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                {selectedFeedback.description}
+              </p>
+            </div>
+          )}
+          <Textarea
+            label="Admin Response"
+            placeholder="Enter your response to this feedback..."
+            value={adminResponse}
+            onChange={(e) => setAdminResponse(e.target.value)}
+            rows={5}
+          />
+          <div className="flex gap-3 pt-4">
+            <Button
+              onClick={handleRespondToFeedback}
+              className="flex-1"
+            >
+              Submit Response
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowResponseModal(false);
+                setSelectedFeedback(null);
+                setAdminResponse('');
+              }}
+            >
+              Cancel
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
       <Modal
         isOpen={showModal}
         onClose={() => setShowModal(false)}
@@ -245,15 +360,23 @@ export const Feedback = () => {
               <h1 className="text-4xl font-bold text-gray-900 dark:text-gray-100 mb-2 flex items-center gap-3">
                 <MessageSquare className="w-9 h-9 text-blue-600 dark:text-blue-500" />
                 Feedback
+                {isAdmin && (
+                  <span className="flex items-center gap-2 text-sm font-medium px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded-full">
+                    <Shield className="w-4 h-4" />
+                    Admin View
+                  </span>
+                )}
               </h1>
               <p className="text-lg text-gray-600 dark:text-gray-400">
-                Help us improve API-Creator by sharing your feedback
+                {isAdmin ? 'Manage user feedback and respond to inquiries' : 'Help us improve API-Creator by sharing your feedback'}
               </p>
             </div>
-            <Button onClick={() => setShowModal(true)}>
-              <Plus className="w-5 h-5" />
-              Submit Feedback
-            </Button>
+            {!isAdmin && (
+              <Button onClick={() => setShowModal(true)}>
+                <Plus className="w-5 h-5" />
+                Submit Feedback
+              </Button>
+            )}
           </div>
         </motion.div>
 
@@ -297,12 +420,14 @@ export const Feedback = () => {
                 No Feedback Yet
               </h3>
               <p className="text-gray-600 dark:text-gray-400 mb-4">
-                Be the first to share your thoughts and help us improve!
+                {isAdmin ? 'No feedback has been submitted yet.' : 'Be the first to share your thoughts and help us improve!'}
               </p>
-              <Button onClick={() => setShowModal(true)}>
-                <Plus className="w-5 h-5" />
-                Submit Feedback
-              </Button>
+              {!isAdmin && (
+                <Button onClick={() => setShowModal(true)}>
+                  <Plus className="w-5 h-5" />
+                  Submit Feedback
+                </Button>
+              )}
             </CardContent>
           </Card>
         ) : (
@@ -342,10 +467,48 @@ export const Feedback = () => {
                             </div>
                           </div>
                         </div>
-                        <div className="text-sm text-gray-500 dark:text-gray-400">
-                          {new Date(feedback.created_at).toLocaleDateString()}
+                        <div className="flex items-center gap-3">
+                          <div className="text-sm text-gray-500 dark:text-gray-400">
+                            {new Date(feedback.created_at).toLocaleDateString()}
+                          </div>
+                          {isAdmin && (
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => openResponseModal(feedback)}
+                              >
+                                <Reply className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleDeleteFeedback(feedback.id)}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          )}
                         </div>
                       </div>
+                      {feedback.admin_response && (
+                        <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Shield className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                            <span className="text-sm font-semibold text-blue-900 dark:text-blue-100">
+                              Admin Response
+                            </span>
+                            {feedback.responded_at && (
+                              <span className="text-xs text-blue-600 dark:text-blue-400">
+                                {new Date(feedback.responded_at).toLocaleDateString()}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-sm text-blue-800 dark:text-blue-200">
+                            {feedback.admin_response}
+                          </p>
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
                 </motion.div>
