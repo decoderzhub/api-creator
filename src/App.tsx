@@ -3,6 +3,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import { Sidebar } from './components/layout/Sidebar';
 import { Header } from './components/layout/Header';
+import { AIAssistant } from './components/layout/AIAssistant';
 import { ToastContainer } from './components/ui/Toast';
 import { useToast } from './hooks/useToast';
 import { Landing } from './pages/Landing';
@@ -12,6 +13,9 @@ import { Home } from './pages/Home';
 import { Generate } from './pages/Generate';
 import { Dashboard } from './pages/Dashboard';
 import { Marketplace } from './pages/Marketplace';
+import { APIKeys } from './pages/APIKeys';
+import { Profile } from './pages/Profile';
+import { Feedback } from './pages/Feedback';
 import { Billing } from './pages/Billing';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -51,6 +55,7 @@ const MainLayout = ({ children }: { children: React.ReactNode }) => {
           {children}
         </main>
       </div>
+      <AIAssistant />
       <ToastContainer toasts={toasts} removeToast={removeToast} />
     </div>
   );
@@ -113,6 +118,36 @@ const AppRoutes = () => {
           <ProtectedRoute>
             <MainLayout>
               <Marketplace />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/api-keys"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <APIKeys />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/profile"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <Profile />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/feedback"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <Feedback />
             </MainLayout>
           </ProtectedRoute>
         }
