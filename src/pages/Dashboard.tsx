@@ -34,6 +34,14 @@ export const Dashboard = () => {
     totalCalls: 0,
     activeAPIs: 0,
   });
+
+  const planLimits = {
+    free: { apis: 5, calls: 1000, activeApis: 3 },
+    pro: { apis: 50, calls: 100000, activeApis: 25 },
+    enterprise: { apis: 999, calls: 9999999, activeApis: 999 }
+  };
+
+  const currentLimits = planLimits[profile?.plan || 'free'];
   const [rateLimitStatus, setRateLimitStatus] = useState<{
     limit: number;
     used: number;
@@ -416,7 +424,10 @@ export const Dashboard = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Total APIs</p>
-                <p className="text-3xl font-bold text-gray-900 dark:text-gray-100">{stats.totalAPIs}</p>
+                <p className="text-3xl font-bold text-gray-900 dark:text-gray-100">
+                  {stats.totalAPIs}
+                  <span className="text-lg text-gray-500 dark:text-gray-400">/{currentLimits.apis}</span>
+                </p>
               </div>
               <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
                 <Activity className="w-6 h-6 text-blue-600 dark:text-blue-400" />
@@ -430,7 +441,10 @@ export const Dashboard = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Total Calls</p>
-                <p className="text-3xl font-bold text-gray-900 dark:text-gray-100">{stats.totalCalls.toLocaleString()}</p>
+                <p className="text-3xl font-bold text-gray-900 dark:text-gray-100">
+                  {stats.totalCalls.toLocaleString()}
+                  <span className="text-lg text-gray-500 dark:text-gray-400">/{currentLimits.calls.toLocaleString()}</span>
+                </p>
               </div>
               <div className="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center">
                 <TrendingUp className="w-6 h-6 text-green-600 dark:text-green-400" />
@@ -444,7 +458,10 @@ export const Dashboard = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Active APIs</p>
-                <p className="text-3xl font-bold text-gray-900 dark:text-gray-100">{stats.activeAPIs}</p>
+                <p className="text-3xl font-bold text-gray-900 dark:text-gray-100">
+                  {stats.activeAPIs}
+                  <span className="text-lg text-gray-500 dark:text-gray-400">/{currentLimits.activeApis}</span>
+                </p>
               </div>
               <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/30 rounded-lg flex items-center justify-center">
                 <ExternalLink className="w-6 h-6 text-purple-600 dark:text-purple-400" />
