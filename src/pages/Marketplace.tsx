@@ -318,7 +318,11 @@ export const Marketplace = () => {
                     <Code className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                     <span className="font-medium text-gray-900 dark:text-gray-100">API Code</span>
                   </div>
-                  {profile?.plan === 'free' ? (
+                  {(profile?.is_admin || profile?.plan === 'pro' || profile?.plan === 'enterprise' || selectedAPI.user_id === profile?.id) ? (
+                    <pre className="text-sm text-gray-900 dark:text-gray-100 overflow-x-auto">
+                      <code>{selectedAPI.code_snapshot}</code>
+                    </pre>
+                  ) : (
                     <div className="bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-950/30 dark:to-purple-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-4 text-center">
                       <p className="text-gray-700 dark:text-gray-300 mb-3">
                         Upgrade to a paid plan to view API source code
@@ -330,10 +334,6 @@ export const Marketplace = () => {
                         Upgrade Plan
                       </Button>
                     </div>
-                  ) : (
-                    <pre className="text-sm text-gray-900 dark:text-gray-100 overflow-x-auto">
-                      <code>{selectedAPI.code_snapshot}</code>
-                    </pre>
                   )}
                 </div>
               )}
