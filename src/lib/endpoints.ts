@@ -118,19 +118,16 @@ export function parseEndpointsFromCode(code: string): ParsedEndpoint[] {
                   description: descriptionMatch ? descriptionMatch[1] : undefined
                 });
               }
-              // Detect Body parameters (Pydantic models)
-              else if (param.includes(':') && !param.includes('=')) {
-                const typeMatch = param.match(/:\s*([\w]+)/);
-                if (typeMatch && typeMatch[1] !== 'str' && typeMatch[1] !== 'int' && typeMatch[1] !== 'float' && typeMatch[1] !== 'bool') {
-                  parameters.push({
-                    name: paramName,
-                    type: 'body',
-                    required: true
-                  });
-                }
+              // Detect Body parameters (Pydantic BaseModel instances)
+              else if (param.includes('Body(')) {
+                parameters.push({
+                  name: paramName,
+                  type: 'body',
+                  required: !param.includes('default=') && !param.includes('=')
+                });
               }
-              // Plain parameters without Query() are likely query params
-              else if (param.includes(':') && !param.includes('Query(') && !param.includes('Body(')) {
+              // Plain typed parameters are query params by default in FastAPI
+              else if (param.includes(':')) {
                 const hasDefault = param.includes('=');
                 parameters.push({
                   name: paramName,
