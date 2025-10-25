@@ -616,7 +616,7 @@ export const Dashboard = () => {
                         </div>
 
                         <div className="flex gap-2">
-                          {profile?.subscription_tier === 'paid' && api.code_snapshot && (
+                          {(profile?.is_admin || profile?.plan === 'pro' || profile?.plan === 'enterprise') && api.code_snapshot && (
                             <Button
                               size="sm"
                               variant="outline"
