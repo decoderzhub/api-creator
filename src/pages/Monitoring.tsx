@@ -220,7 +220,11 @@ export default function Monitoring() {
               </div>
               <div>
                 <h2 className="text-xl font-semibold text-gray-900">Gateway Status</h2>
-                <p className="text-sm text-gray-600">Last updated: {new Date(health.timestamp).toLocaleString()}</p>
+                <p className="text-sm text-gray-600">
+                  Last updated: {health.timestamp
+                    ? new Date(health.timestamp).toLocaleString()
+                    : 'Just now'}
+                </p>
               </div>
             </div>
             <div className={`px-4 py-2 rounded-full font-semibold ${getStatusColor(health.status)} bg-opacity-10`}>

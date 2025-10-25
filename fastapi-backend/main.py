@@ -127,12 +127,12 @@ async def root():
 
 
 @app.get("/health")
-async def health_check():
+def health_check():
     """Detailed health check"""
     try:
         from supabase import create_client
         supabase = create_client(settings.supabase_url, settings.supabase_service_role_key)
-        db_check = await supabase.table("apis").select("id").limit(1).execute()
+        db_check = supabase.table("apis").select("id").limit(1).execute()
         db_status = "connected"
     except Exception as e:
         logger.error("Database health check failed", extra={"error": str(e)})
