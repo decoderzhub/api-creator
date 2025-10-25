@@ -18,6 +18,7 @@ import { Profile } from './pages/Profile';
 import { Feedback } from './pages/Feedback';
 import { Billing } from './pages/Billing';
 import Monitoring from './pages/Monitoring';
+import IntegrationHelper from './pages/IntegrationHelper';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth();
@@ -169,6 +170,16 @@ const AppRoutes = () => {
           <ProtectedRoute>
             <MainLayout>
               <Monitoring />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/integration-helper"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <IntegrationHelper />
             </MainLayout>
           </ProtectedRoute>
         }

@@ -1,6 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Home, Zap, LayoutDashboard, Store, CreditCard, LogOut, User, MessageSquare, Key, Activity } from 'lucide-react';
+import { Home, Zap, LayoutDashboard, Store, CreditCard, LogOut, User, MessageSquare, Key, Activity, Code2 } from 'lucide-react';
 
 interface SidebarProps {
   onLogout: () => void;
@@ -13,6 +13,7 @@ export const Sidebar = ({ onLogout }: SidebarProps) => {
     { path: '/', icon: Home, label: 'Home' },
     { path: '/generate', icon: Zap, label: 'Generate API' },
     { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+    { path: '/integration-helper', icon: Code2, label: 'Integrations' },
     { path: '/marketplace', icon: Store, label: 'Marketplace' },
   ];
 
