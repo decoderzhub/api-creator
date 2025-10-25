@@ -1,7 +1,7 @@
 """
 Rate limiting middleware and utilities
 """
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Tuple
 from supabase import create_client, Client
 from config import get_settings
@@ -19,7 +19,7 @@ TIER_LIMITS = {
 
 def get_current_window_start() -> datetime:
     """Get the start of the current hour window"""
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     return now.replace(minute=0, second=0, microsecond=0)
 
 
