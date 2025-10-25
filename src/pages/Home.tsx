@@ -117,7 +117,7 @@ export const Home = () => {
 
       <section className="max-w-4xl mx-auto py-20">
         <Card glass>
-          <CardContent className="p-12 text-center">
+          <CardContent className="p-12 text-center flex flex-col items-center">
             <h2 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-4">
               Ready to get started?
             </h2>
