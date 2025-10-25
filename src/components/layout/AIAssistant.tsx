@@ -78,11 +78,6 @@ export const AIAssistant = () => {
     setIsLoading(true);
 
     const assistantMessageId = (Date.now() + 1).toString();
-    setMessages(prev => [...prev, {
-      id: assistantMessageId,
-      role: 'assistant',
-      content: ''
-    }]);
 
     try {
       const conversationHistory = messages
@@ -108,10 +103,15 @@ export const AIAssistant = () => {
         throw new Error(errorData.error || 'Failed to get response');
       }
 
-      if (response.headers.get('content-type')?.includes('text/event-stream')) {
+      const contentType = response.headers.get('content-type');
+      console.log('Response content-type:', contentType);
+
+      if (contentType?.includes('text/event-stream')) {
+        console.log('Starting SSE stream...');
         const reader = response.body?.getReader();
         const decoder = new TextDecoder();
         let accumulatedContent = '';
+        let buffer = '';
 
         if (reader) {
           while (true) {
@@ -119,22 +119,39 @@ export const AIAssistant = () => {
             if (done) break;
 
             const chunk = decoder.decode(value, { stream: true });
-            const lines = chunk.split('\n');
+            buffer += chunk;
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || '';
 
             for (const line of lines) {
               if (line.startsWith('data: ')) {
-                const data = line.slice(6);
-                if (data === '[DONE]') continue;
+                const data = line.slice(6).trim();
+                if (data === '[DONE]') {
+                  console.log('Stream complete');
+                  continue;
+                }
 
                 try {
                   const parsed = JSON.parse(data);
+                  console.log('Parsed SSE:', parsed);
                   if (parsed.type === 'content_block_delta' && parsed.delta?.text) {
                     accumulatedContent += parsed.delta.text;
-                    setMessages(prev => prev.map(m =>
-                      m.id === assistantMessageId
-                        ? { ...m, content: accumulatedContent }
-                        : m
-                    ));
+                    setMessages(prev => {
+                      const existing = prev.find(m => m.id === assistantMessageId);
+                      if (existing) {
+                        return prev.map(m =>
+                          m.id === assistantMessageId
+                            ? { ...m, content: accumulatedContent }
+                            : m
+                        );
+                      } else {
+                        return [...prev, {
+                          id: assistantMessageId,
+                          role: 'assistant',
+                          content: accumulatedContent
+                        }];
+                      }
+                    });
                   }
                 } catch (e) {
                   console.error('Parse error:', e);
@@ -146,22 +163,44 @@ export const AIAssistant = () => {
       } else {
         const data = await response.json();
         if (data.fallback) {
-          setMessages(prev => prev.map(m =>
-            m.id === assistantMessageId
-              ? { ...m, content: data.fallback }
-              : m
-          ));
+          setMessages(prev => {
+            const existing = prev.find(m => m.id === assistantMessageId);
+            if (existing) {
+              return prev.map(m =>
+                m.id === assistantMessageId
+                  ? { ...m, content: data.fallback }
+                  : m
+              );
+            } else {
+              return [...prev, {
+                id: assistantMessageId,
+                role: 'assistant',
+                content: data.fallback
+              }];
+            }
+          });
         }
       }
     } catch (error: any) {
       console.error('Error:', error);
       const fallbackMessage = 'I apologize, but I\'m having trouble connecting right now. Here are some tips for generating APIs:\n\n1. Store your API keys in the API Keys page\n2. Reference them by name when describing your API\n3. Include proper error handling and rate limiting\n4. Consider caching responses to reduce costs\n\nWhen ready, go to the Generate page and describe your API!';
 
-      setMessages(prev => prev.map(m =>
-        m.id === assistantMessageId
-          ? { ...m, content: fallbackMessage }
-          : m
-      ));
+      setMessages(prev => {
+        const existing = prev.find(m => m.id === assistantMessageId);
+        if (existing) {
+          return prev.map(m =>
+            m.id === assistantMessageId
+              ? { ...m, content: fallbackMessage }
+              : m
+          );
+        } else {
+          return [...prev, {
+            id: assistantMessageId,
+            role: 'assistant',
+            content: fallbackMessage
+          }];
+        }
+      });
     } finally {
       setIsLoading(false);
     }
@@ -224,8 +263,21 @@ export const AIAssistant = () => {
                     {message.role === 'user' ? (
                       <p className="text-sm whitespace-pre-wrap">{message.content}</p>
                     ) : (
-                      <div className="prose prose-sm max-w-none dark:prose-invert prose-p:my-2 prose-ul:my-2 prose-ol:my-2 prose-li:my-0">
-                        <ReactMarkdown>{message.content}</ReactMarkdown>
+                      <div className="prose prose-sm max-w-none dark:prose-invert prose-p:my-3 prose-ul:my-3 prose-ol:my-3 prose-li:my-1 prose-headings:font-bold prose-headings:my-3 prose-strong:font-bold prose-strong:text-gray-900 dark:prose-strong:text-gray-100">
+                        <ReactMarkdown
+                          components={{
+                            p: ({ children }) => <p className="leading-relaxed mb-3 last:mb-0">{children}</p>,
+                            ul: ({ children }) => <ul className="space-y-2 my-3">{children}</ul>,
+                            ol: ({ children }) => <ol className="space-y-2 my-3">{children}</ol>,
+                            li: ({ children }) => <li className="leading-relaxed">{children}</li>,
+                            strong: ({ children }) => <strong className="font-bold text-gray-900 dark:text-white">{children}</strong>,
+                            h1: ({ children }) => <h1 className="text-lg font-bold mb-3 mt-4 first:mt-0">{children}</h1>,
+                            h2: ({ children }) => <h2 className="text-base font-bold mb-2 mt-3 first:mt-0">{children}</h2>,
+                            h3: ({ children }) => <h3 className="text-sm font-bold mb-2 mt-3 first:mt-0">{children}</h3>,
+                          }}
+                        >
+                          {message.content}
+                        </ReactMarkdown>
                       </div>
                     )}
                   </div>
