@@ -5,14 +5,16 @@ Handles AI-powered prompt suggestions
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from typing import List, Dict
+import sys
 import os
 import anthropic
 
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from config import get_settings
 from .auth import verify_token
 
 router = APIRouter()
-
-ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
+settings = get_settings()
 
 
 class SuggestPromptsRequest(BaseModel):
@@ -33,11 +35,11 @@ async def suggest_prompts(request: SuggestPromptsRequest, user_id: str = Depends
         print(f"[SUGGESTIONS] Partial Prompt Length: {len(request.partialPrompt)} chars")
         print(f"[SUGGESTIONS] Partial Prompt: {request.partialPrompt[:100]}...")
 
-        if not ANTHROPIC_API_KEY:
+        if not settings.anthropic_api_key:
             print("[SUGGESTIONS] No Anthropic API key, using fallback")
             return get_fallback_suggestions(request.apiName, request.partialPrompt)
 
-        client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+        client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
 
         system_prompt = """You are an expert API designer. Given an API name and partial description, suggest 3 complete, concise API descriptions that:
 1. Are exactly 5-6 words each
@@ -90,10 +92,10 @@ Suggest 3 complete API descriptions:"""
 async def suggest_about(request: SuggestAboutRequest, user_id: str = Depends(verify_token)):
     """Generate AI-powered about section suggestions for marketplace"""
     try:
-        if not ANTHROPIC_API_KEY:
+        if not settings.anthropic_api_key:
             return get_fallback_about_suggestions(request.apiName, request.partialPrompt)
 
-        client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+        client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
 
         system_prompt = """You are writing marketplace descriptions for APIs. Given an API name and description, suggest 3 concise "about" descriptions that:
 1. Are exactly 5-6 words each
