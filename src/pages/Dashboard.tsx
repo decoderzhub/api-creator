@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Trash2, ExternalLink, Copy, Activity, TrendingUp, Globe, X, List, ChevronDown, ChevronUp, Edit2, Check, Code, Zap, Play } from 'lucide-react';
+import { Trash2, ExternalLink, Copy, Activity, TrendingUp, Globe, X, List, ChevronDown, ChevronUp, Edit2, Check, Code, Zap, Play, Bookmark, BookmarkX } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
@@ -15,7 +15,9 @@ import { apiService } from '../lib/api';
 
 export const Dashboard = () => {
   const [apis, setApis] = useState<API[]>([]);
+  const [savedApis, setSavedApis] = useState<API[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingSaved, setLoadingSaved] = useState(true);
   const [stats, setStats] = useState({
     totalAPIs: 0,
     totalCalls: 0,
@@ -47,6 +49,7 @@ export const Dashboard = () => {
 
   useEffect(() => {
     loadAPIs();
+    loadSavedAPIs();
     loadRateLimitStatus();
 
     // Refresh rate limit status every 30 seconds
@@ -80,6 +83,46 @@ export const Dashboard = () => {
       addToast(err.message || 'Failed to load APIs', 'error');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadSavedAPIs = async () => {
+    if (!profile) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('saved_apis')
+        .select('api_id, apis(*)')
+        .eq('user_id', profile.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      const apiData = data?.map(item => item.apis).filter(Boolean) || [];
+      setSavedApis(apiData as API[]);
+    } catch (err: any) {
+      console.error('Failed to load saved APIs:', err);
+    } finally {
+      setLoadingSaved(false);
+    }
+  };
+
+  const unsaveAPI = async (apiId: string) => {
+    if (!profile) return;
+
+    try {
+      const { error } = await supabase
+        .from('saved_apis')
+        .delete()
+        .eq('user_id', profile.id)
+        .eq('api_id', apiId);
+
+      if (error) throw error;
+
+      addToast('Removed from My APIs', 'success');
+      loadSavedAPIs();
+    } catch (err: any) {
+      addToast(err.message || 'Failed to remove API', 'error');
     }
   };
 
@@ -347,6 +390,76 @@ export const Dashboard = () => {
           </CardContent>
         </Card>
       </div>
+
+      {savedApis.length > 0 && (
+        <Card className="mb-8">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Bookmark className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Saved from Marketplace</h2>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {loadingSaved ? (
+              <div className="text-center py-12">
+                <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                <p className="text-gray-600 dark:text-gray-400">Loading saved APIs...</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {savedApis.map((api) => (
+                  <motion.div
+                    key={api.id}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:shadow-md transition-shadow"
+                  >
+                    <div className="flex items-start justify-between mb-3">
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                        {api.name}
+                      </h3>
+                      <button
+                        onClick={() => unsaveAPI(api.id)}
+                        className="p-1 hover:bg-red-100 dark:hover:bg-red-900/30 rounded transition-colors"
+                        title="Remove from saved"
+                      >
+                        <BookmarkX className="w-4 h-4 text-red-600 dark:text-red-400" />
+                      </button>
+                    </div>
+                    {api.about && (
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                        {api.about}
+                      </p>
+                    )}
+                    <div className="space-y-2">
+                      <div>
+                        <p className="text-xs text-gray-500 dark:text-gray-500 mb-1">Endpoint</p>
+                        <div className="flex items-center gap-2">
+                          <code className="flex-1 px-2 py-1 bg-gray-100 dark:bg-gray-900 rounded text-xs font-mono text-gray-900 dark:text-gray-100 truncate">
+                            {api.endpoint_url}
+                          </code>
+                          <Button size="sm" variant="ghost" onClick={() => copyToClipboard(api.endpoint_url)}>
+                            <Copy className="w-3 h-3" />
+                          </Button>
+                        </div>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="w-full"
+                        onClick={() => window.open(api.endpoint_url, '_blank')}
+                      >
+                        <ExternalLink className="w-3 h-3 mr-2" />
+                        Try API
+                      </Button>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>

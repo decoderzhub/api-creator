@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Star, TrendingUp, Eye, MessageSquare, User, Calendar, Code, ExternalLink, X } from 'lucide-react';
+import { Search, Star, TrendingUp, Eye, MessageSquare, User, Calendar, Code, ExternalLink, X, Plus, Check } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '../components/ui/Card';
 import { Input } from '../components/ui/Input';
 import { Textarea } from '../components/ui/Textarea';
@@ -46,6 +46,8 @@ export const Marketplace = () => {
   const [userRating, setUserRating] = useState(0);
   const [userComment, setUserComment] = useState('');
   const [submittingReview, setSubmittingReview] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
+  const [savingAPI, setSavingAPI] = useState(false);
   const { profile } = useAuth();
   const { addToast } = useToast();
 
@@ -56,6 +58,7 @@ export const Marketplace = () => {
   useEffect(() => {
     if (selectedAPI) {
       loadAPIDetails(selectedAPI.id);
+      checkIfSaved(selectedAPI.id);
     }
   }, [selectedAPI]);
 
@@ -172,6 +175,58 @@ export const Marketplace = () => {
     }
   };
 
+  const checkIfSaved = async (apiId: string) => {
+    if (!profile) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('saved_apis')
+        .select('id')
+        .eq('user_id', profile.id)
+        .eq('api_id', apiId)
+        .maybeSingle();
+
+      if (error) throw error;
+      setIsSaved(!!data);
+    } catch (err: any) {
+      console.error('Failed to check if API is saved:', err);
+    }
+  };
+
+  const handleSaveAPI = async () => {
+    if (!profile || !selectedAPI) return;
+
+    setSavingAPI(true);
+    try {
+      if (isSaved) {
+        const { error } = await supabase
+          .from('saved_apis')
+          .delete()
+          .eq('user_id', profile.id)
+          .eq('api_id', selectedAPI.id);
+
+        if (error) throw error;
+        setIsSaved(false);
+        addToast('Removed from My APIs', 'success');
+      } else {
+        const { error } = await supabase
+          .from('saved_apis')
+          .insert({
+            user_id: profile.id,
+            api_id: selectedAPI.id
+          });
+
+        if (error) throw error;
+        setIsSaved(true);
+        addToast('Added to My APIs', 'success');
+      }
+    } catch (err: any) {
+      addToast(err.message || 'Failed to save API', 'error');
+    } finally {
+      setSavingAPI(false);
+    }
+  };
+
   const filteredAPIs = apis.filter(api =>
     api.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     api.about?.toLowerCase().includes(searchTerm.toLowerCase())
@@ -224,6 +279,29 @@ export const Marketplace = () => {
                 {selectedAPI.about}
               </p>
 
+              {profile && selectedAPI.user_id !== profile.id && (
+                <div className="mb-4">
+                  <Button
+                    onClick={handleSaveAPI}
+                    isLoading={savingAPI}
+                    variant={isSaved ? 'outline' : 'primary'}
+                    className="w-full"
+                  >
+                    {isSaved ? (
+                      <>
+                        <Check className="w-4 h-4 mr-2" />
+                        Saved to My APIs
+                      </>
+                    ) : (
+                      <>
+                        <Plus className="w-4 h-4 mr-2" />
+                        Add to My APIs
+                      </>
+                    )}
+                  </Button>
+                </div>
+              )}
+
               <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-4">
                 <div className="flex items-center gap-2 mb-2">
                   <Code className="w-5 h-5 text-blue-600 dark:text-blue-400" />
@@ -236,15 +314,39 @@ export const Marketplace = () => {
                   <Button
                     size="sm"
                     variant="ghost"
-                    onClick={() => {
-                      navigator.clipboard.writeText(selectedAPI.endpoint_url);
-                      addToast('Copied to clipboard', 'success');
-                    }}
+                    onClick={() => window.open(selectedAPI.endpoint_url, '_blank')}
+                    title="Open in new tab"
                   >
                     <ExternalLink className="w-4 h-4" />
                   </Button>
                 </div>
               </div>
+
+              {selectedAPI.code_snapshot && (
+                <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Code className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                    <span className="font-medium text-gray-900 dark:text-gray-100">API Code</span>
+                  </div>
+                  {profile?.plan === 'free' ? (
+                    <div className="bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-950/30 dark:to-purple-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-4 text-center">
+                      <p className="text-gray-700 dark:text-gray-300 mb-3">
+                        Upgrade to a paid plan to view API source code
+                      </p>
+                      <Button
+                        size="sm"
+                        onClick={() => window.location.href = '/billing'}
+                      >
+                        Upgrade Plan
+                      </Button>
+                    </div>
+                  ) : (
+                    <pre className="text-sm text-gray-900 dark:text-gray-100 overflow-x-auto">
+                      <code>{selectedAPI.code_snapshot}</code>
+                    </pre>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="border-t border-gray-200 dark:border-gray-800 pt-6">
