@@ -44,7 +44,15 @@ const examplePrompts = [
 ];
 
 export const AIAssistant = () => {
-  const [isOpen, setIsOpen] = useState(true);
+  const [isOpen, setIsOpen] = useState(false);
+  const [showPulse, setShowPulse] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowPulse(false);
+    }, 10000);
+    return () => clearTimeout(timer);
+  }, []);
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
@@ -218,10 +226,16 @@ export const AIAssistant = () => {
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
             exit={{ scale: 0 }}
-            onClick={() => setIsOpen(true)}
+            onClick={() => {
+              setIsOpen(true);
+              setShowPulse(false);
+            }}
             className="fixed bottom-6 right-6 w-14 h-14 bg-gradient-to-br from-blue-600 to-purple-600 rounded-full shadow-lg hover:shadow-xl flex items-center justify-center text-white z-40 hover:scale-110 transition-transform"
           >
-            <MessageSquare className="w-6 h-6" />
+            {showPulse && (
+              <span className="absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75 animate-ping"></span>
+            )}
+            <MessageSquare className="w-6 h-6 relative z-10" />
           </motion.button>
         )}
       </AnimatePresence>
@@ -232,7 +246,7 @@ export const AIAssistant = () => {
             initial={{ x: 400, opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
             exit={{ x: 400, opacity: 0 }}
-            className="fixed right-0 top-0 h-full w-96 bg-white dark:bg-gray-900 shadow-2xl z-50 flex flex-col border-l border-gray-200 dark:border-gray-800"
+            className="fixed right-0 top-0 h-full w-96 bg-white dark:bg-gray-900 shadow-2xl z-[60] flex flex-col border-l border-gray-200 dark:border-gray-800"
           >
             <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-800 bg-gradient-to-r from-blue-600 to-purple-600">
               <div className="flex items-center gap-2 text-white">
