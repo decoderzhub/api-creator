@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Activity, AlertCircle, CheckCircle, Clock, Cpu, Database, HardDrive, Server, TrendingUp, Zap } from 'lucide-react';
+import { Activity, AlertCircle, CheckCircle, Clock, Cpu, Database, HardDrive, Server, TrendingUp, Zap, Lock } from 'lucide-react';
 import { Card } from '../components/ui/Card';
 import { supabase } from '../lib/supabase';
+import { useAuth } from '../contexts/AuthContext';
 
 interface SystemMetrics {
   uptime_seconds: number;
@@ -32,10 +33,13 @@ interface RecentUsage {
 }
 
 export default function Monitoring() {
+  const { user, profile } = useAuth();
   const [metrics, setMetrics] = useState<SystemMetrics | null>(null);
   const [health, setHealth] = useState<GatewayHealth | null>(null);
   const [usage, setUsage] = useState<RecentUsage | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const isAdmin = profile?.is_admin || false;
 
   useEffect(() => {
     fetchMonitoringData();
@@ -102,20 +106,30 @@ export default function Monitoring() {
       const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
       const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
 
-      const { data: dailyData } = await supabase
+      let dailyQuery = supabase
         .from('api_usage')
         .select('*')
         .gte('created_at', oneDayAgo.toISOString());
 
-      const { data: hourlyData } = await supabase
+      let hourlyQuery = supabase
         .from('api_usage')
         .select('*')
         .gte('created_at', oneHourAgo.toISOString());
 
-      const { data: topApisData } = await supabase
+      let topApisQuery = supabase
         .from('api_usage')
-        .select('api_id, apis(name)')
+        .select('api_id, apis(name, user_id)')
         .gte('created_at', oneDayAgo.toISOString());
+
+      if (!isAdmin && user) {
+        dailyQuery = dailyQuery.eq('apis.user_id', user.id);
+        hourlyQuery = hourlyQuery.eq('apis.user_id', user.id);
+        topApisQuery = topApisQuery.eq('apis.user_id', user.id);
+      }
+
+      const { data: dailyData } = await dailyQuery;
+      const { data: hourlyData } = await hourlyQuery;
+      const { data: topApisData } = await topApisQuery;
 
       const apiCounts: Record<string, { name: string; count: number }> = {};
       topApisData?.forEach((item: any) => {
@@ -177,8 +191,24 @@ export default function Monitoring() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">System Monitoring</h1>
-        <p className="mt-2 text-gray-600">Real-time system health and performance metrics</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">
+              {isAdmin ? 'System Monitoring' : 'My API Monitoring'}
+            </h1>
+            <p className="mt-2 text-gray-600">
+              {isAdmin
+                ? 'Real-time system health and performance metrics'
+                : 'Monitor your API usage and performance'}
+            </p>
+          </div>
+          {isAdmin && (
+            <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-700 rounded-lg">
+              <Lock className="w-4 h-4" />
+              <span className="text-sm font-medium">Admin View</span>
+            </div>
+          )}
+        </div>
       </div>
 
       {health && (
@@ -201,7 +231,7 @@ export default function Monitoring() {
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {metrics && (
+        {isAdmin && metrics && (
           <>
             <Card className="p-6">
               <div className="flex items-center space-x-3">
@@ -277,7 +307,7 @@ export default function Monitoring() {
           </>
         )}
 
-        {health && (
+        {isAdmin && health && (
           <>
             <Card className="p-6">
               <div className="flex items-center space-x-3">
@@ -369,7 +399,9 @@ export default function Monitoring() {
 
           {usage.top_apis.length > 0 && (
             <Card className="p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Top APIs (24h)</h3>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                {isAdmin ? 'Top APIs (24h)' : 'My Top APIs (24h)'}
+              </h3>
               <div className="space-y-3">
                 {usage.top_apis.map((api, index) => (
                   <div key={api.api_id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">

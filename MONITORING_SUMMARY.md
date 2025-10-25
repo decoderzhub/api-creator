@@ -81,25 +81,31 @@ A comprehensive monitoring and observability system has been added to your API B
 
 **New `/monitoring` page in the app shows:**
 
-**System Metrics:**
-- Uptime
-- Total requests
-- Average response time
-- Error rate
+**Access Control:**
+- All authenticated users can access
+- Regular users see only their own data
+- Admins see system-wide metrics
+
+**For Regular Users:**
+- Personal API usage (24h/1h)
+- Personal top APIs
+- Gateway health status
+- Error tracking for own APIs
+
+**For Admins Only:**
+- System uptime
+- Total requests (all users)
+- Average response time (system-wide)
+- Error rate (system-wide)
 - Memory and CPU usage
 - Loaded APIs count
-- Database status
-
-**Usage Statistics:**
-- Last 24 hours: requests, avg response time, errors
-- Last hour: requests and requests per minute
-- Top 5 APIs by usage
+- All users' API usage
 
 **Features:**
 - Auto-refresh every 30 seconds
 - Color-coded status indicators
 - Real-time data from Supabase
-- Beautiful UI with charts
+- Beautiful UI with role-based views
 
 ## Files Added
 

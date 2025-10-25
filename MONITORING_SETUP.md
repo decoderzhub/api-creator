@@ -159,26 +159,30 @@ Returns:
 
 Access at `/monitoring` in your web app.
 
+**Access Control:**
+- **All authenticated users** can access the dashboard
+- **Regular users** see only their own API usage data
+- **Admin users** see system-wide metrics and all user data
+
 **Features:**
-- Real-time system metrics (auto-refresh every 30s)
-- Gateway status indicator
-- Resource usage (CPU, memory)
-- Request statistics (24h and 1h windows)
-- Top 5 most-used APIs
-- Error tracking
+
+**For All Users:**
+- Gateway health status
+- Personal API usage statistics (24h and 1h windows)
+- Personal top APIs
+- Error tracking for own APIs
 - Database connectivity status
 
-**Metrics Displayed:**
-- Uptime
-- Total requests
-- Average response time
-- Error rate
-- Memory usage
-- CPU usage
+**Admin-Only Features:**
+- System uptime
+- Total requests (all users)
+- Average response time (system-wide)
+- Error rate (system-wide)
+- Memory and CPU usage
 - Loaded APIs count
-- Database status
-- Requests per hour/day
-- Top APIs by usage
+- All users' API usage
+
+**Auto-refresh:** Every 30 seconds
 
 ## Request Correlation
 
@@ -243,6 +247,29 @@ Consider adding:
 - Cloud logging (AWS CloudWatch, Google Cloud Logging)
 - Log aggregation (ELK Stack, Loki)
 - Long-term storage for compliance
+
+## Admin Access
+
+To make a user an admin, update their profile in Supabase:
+
+```sql
+UPDATE user_profiles
+SET is_admin = true
+WHERE email = 'admin@example.com';
+```
+
+Or using the Supabase dashboard:
+1. Go to Table Editor
+2. Select `user_profiles` table
+3. Find the user
+4. Check the `is_admin` checkbox
+5. Save
+
+Admin users will see:
+- "Admin View" badge in monitoring dashboard
+- System-wide metrics (CPU, memory, uptime)
+- All users' API usage data
+- Access to `/metrics` endpoint
 
 ## Troubleshooting
 
