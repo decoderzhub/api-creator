@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Trash2, ExternalLink, Copy, Activity, TrendingUp, Globe, X, List, ChevronDown, ChevronUp, Edit2, Check } from 'lucide-react';
+import { Trash2, ExternalLink, Copy, Activity, TrendingUp, Globe, X, List, ChevronDown, ChevronUp, Edit2, Check, Code } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
@@ -26,6 +26,8 @@ export const Dashboard = () => {
   const [editName, setEditName] = useState('');
   const [editAbout, setEditAbout] = useState('');
   const [saveLoading, setSaveLoading] = useState(false);
+  const [codeModalOpen, setCodeModalOpen] = useState(false);
+  const [viewingCode, setViewingCode] = useState<{ name: string; code: string } | null>(null);
   const { profile } = useAuth();
   const { addToast } = useToast();
 
@@ -409,6 +411,19 @@ export const Dashboard = () => {
                       </div>
                     </div>
                     <div className="flex gap-2">
+                      {api.code_snapshot && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setViewingCode({ name: api.name, code: api.code_snapshot });
+                            setCodeModalOpen(true);
+                          }}
+                        >
+                          <Code className="w-4 h-4 mr-1" />
+                          View Code
+                        </Button>
+                      )}
                       {!api.is_published && (
                         <Button
                           size="sm"
@@ -519,6 +534,61 @@ export const Dashboard = () => {
                   <Globe className="w-4 h-4 mr-2" />
                   Publish
                 </Button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {codeModalOpen && viewingCode && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+            onClick={() => setCodeModalOpen(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-4xl w-full max-h-[80vh] flex flex-col"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
+                <div className="flex items-center gap-3">
+                  <Code className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                  <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
+                    {viewingCode.name}
+                  </h2>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(viewingCode.code);
+                      addToast('Code copied to clipboard!', 'success');
+                    }}
+                    className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                    title="Copy all code"
+                  >
+                    <Copy className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                  </button>
+                  <button
+                    onClick={() => setCodeModalOpen(false)}
+                    className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                  >
+                    <X className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex-1 overflow-auto p-6">
+                <div className="bg-gray-900 dark:bg-black rounded-lg p-4 overflow-x-auto">
+                  <pre className="text-sm text-gray-100 font-mono leading-relaxed">
+                    <code>{viewingCode.code}</code>
+                  </pre>
+                </div>
               </div>
             </motion.div>
           </motion.div>
