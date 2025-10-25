@@ -308,9 +308,9 @@ export const Marketplace = () => {
                   <Code className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                   <span className="font-medium text-gray-900 dark:text-gray-100">Endpoint URL</span>
                 </div>
-                <code className="text-sm text-gray-900 dark:text-gray-100 break-all block">
-                  {selectedAPI.endpoint_url}
-                </code>
+                <div className="text-xs">
+                  <CodeViewer code={selectedAPI.endpoint_url} language="bash" />
+                </div>
               </div>
 
               {selectedAPI.code_snapshot && (

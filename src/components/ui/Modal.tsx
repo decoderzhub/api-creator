@@ -58,7 +58,7 @@ export const Modal = ({ isOpen, onClose, title, children, maxWidth = 'md' }: Mod
                   <X className="w-5 h-5 text-gray-500 dark:text-gray-400" />
                 </button>
               </div>
-              <div className="p-6">
+              <div className="p-6 max-h-[calc(100vh-200px)] overflow-y-auto">
                 {children}
               </div>
             </motion.div>
