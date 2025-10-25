@@ -41,6 +41,7 @@ export const Dashboard = () => {
     reset: number;
     plan: string;
   } | null>(null);
+  const [resetCountdown, setResetCountdown] = useState<string>('');
   const [publishModalOpen, setPublishModalOpen] = useState(false);
   const [selectedApi, setSelectedApi] = useState<API | null>(null);
   const [publishLoading, setPublishLoading] = useState(false);
@@ -71,6 +72,30 @@ export const Dashboard = () => {
 
     return () => clearInterval(rateLimitInterval);
   }, [profile]);
+
+  useEffect(() => {
+    if (!rateLimitStatus) return;
+
+    const updateCountdown = () => {
+      const now = Math.floor(Date.now() / 1000);
+      const secondsRemaining = rateLimitStatus.reset - now;
+
+      if (secondsRemaining <= 0) {
+        setResetCountdown('Resetting...');
+        loadRateLimitStatus();
+        return;
+      }
+
+      const minutes = Math.floor(secondsRemaining / 60);
+      const seconds = secondsRemaining % 60;
+      setResetCountdown(`${minutes}m ${seconds}s`);
+    };
+
+    updateCountdown();
+    const countdownInterval = setInterval(updateCountdown, 1000);
+
+    return () => clearInterval(countdownInterval);
+  }, [rateLimitStatus]);
 
   const loadUserApiKey = async () => {
     if (!profile) return;
@@ -441,6 +466,9 @@ export const Dashboard = () => {
                     </p>
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                       {rateLimitStatus.used} used • {rateLimitStatus.plan} plan
+                    </p>
+                    <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                      Resets in: {resetCountdown}
                     </p>
                     {rateLimitStatus.remaining < rateLimitStatus.limit * 0.2 && (
                       <p className="text-xs text-orange-600 dark:text-orange-400 mt-1">
