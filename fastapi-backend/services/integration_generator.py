@@ -3,20 +3,24 @@ Integration code generation service using Anthropic Claude API.
 Generates production-ready integration code for user APIs.
 """
 
+import sys
 import os
 from typing import Dict, List, Optional
 import anthropic
 from fastapi import HTTPException
+
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from config import get_settings
 
 
 class IntegrationGenerator:
     """Generates integration code for APIs using Claude."""
 
     def __init__(self):
-        api_key = os.getenv("ANTHROPIC_API_KEY")
-        if not api_key:
-            raise ValueError("ANTHROPIC_API_KEY environment variable is required")
-        self.client = anthropic.Anthropic(api_key=api_key)
+        settings = get_settings()
+        if not settings.anthropic_api_key:
+            raise ValueError("ANTHROPIC_API_KEY not configured in settings")
+        self.client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
         self.model = "claude-sonnet-4-20250514"
 
     def generate_integration_code(
