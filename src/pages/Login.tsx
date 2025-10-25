@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Zap } from 'lucide-react';
+import { Zap, Mail } from 'lucide-react';
 import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
 import { useAuth } from '../contexts/AuthContext';
@@ -42,7 +42,7 @@ export const Login = () => {
               <Zap className="w-7 h-7 text-white" />
             </div>
             <span className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-blue-700 bg-clip-text text-transparent">
-              API Builder
+              API-Creator
             </span>
           </div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
@@ -56,8 +56,18 @@ export const Login = () => {
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 p-8">
           <form onSubmit={handleSubmit} className="space-y-6">
             {error && (
-              <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-600 dark:text-red-400 text-sm">
-                {error}
+              <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                <div className="flex items-start gap-3">
+                  <Mail className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium text-red-600 dark:text-red-400 mb-1">
+                      {error.includes('verify') ? 'Email Verification Required' : 'Authentication Error'}
+                    </p>
+                    <p className="text-sm text-red-600 dark:text-red-400">
+                      {error}
+                    </p>
+                  </div>
+                </div>
               </div>
             )}
 

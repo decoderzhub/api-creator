@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Zap, AlertCircle, CheckCircle, Shield } from 'lucide-react';
+import { Zap, AlertCircle, CheckCircle, Shield, Mail, ArrowRight } from 'lucide-react';
 import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
 import { useAuth } from '../contexts/AuthContext';
@@ -16,6 +16,7 @@ export const Signup = () => {
   const [passwordValidation, setPasswordValidation] = useState<any>(null);
   const [isPwned, setIsPwned] = useState(false);
   const [checkingPwned, setCheckingPwned] = useState(false);
+  const [showEmailVerification, setShowEmailVerification] = useState(false);
   const { signUp } = useAuth();
   const navigate = useNavigate();
 
@@ -61,14 +62,112 @@ export const Signup = () => {
     setLoading(true);
 
     try {
-      await signUp(email, password);
-      navigate('/dashboard');
+      const result = await signUp(email, password);
+
+      if (result.needsEmailVerification) {
+        setShowEmailVerification(true);
+      } else {
+        navigate('/dashboard');
+      }
     } catch (err: any) {
       setError(err.message || 'Failed to create account');
     } finally {
       setLoading(false);
     }
   };
+
+  if (showEmailVerification) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center p-4">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="w-full max-w-md"
+        >
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center gap-2 mb-4">
+              <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl flex items-center justify-center">
+                <Zap className="w-7 h-7 text-white" />
+              </div>
+              <span className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-blue-700 bg-clip-text text-transparent">
+                API-Creator
+              </span>
+            </div>
+          </div>
+
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 border border-gray-200 dark:border-gray-700">
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Mail className="w-8 h-8 text-white" />
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
+                Check Your Email
+              </h2>
+              <p className="text-gray-600 dark:text-gray-400">
+                We've sent a verification link to
+              </p>
+              <p className="text-blue-600 dark:text-blue-400 font-medium mt-1">
+                {email}
+              </p>
+            </div>
+
+            <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-6">
+              <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
+                <CheckCircle className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                Next Steps
+              </h3>
+              <ol className="space-y-2 text-sm text-gray-700 dark:text-gray-300">
+                <li className="flex items-start gap-2">
+                  <span className="font-semibold text-blue-600 dark:text-blue-400 mt-0.5">1.</span>
+                  <span>Open your email inbox</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="font-semibold text-blue-600 dark:text-blue-400 mt-0.5">2.</span>
+                  <span>Click the verification link in the email we sent</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="font-semibold text-blue-600 dark:text-blue-400 mt-0.5">3.</span>
+                  <span>You'll be automatically signed in</span>
+                </li>
+              </ol>
+            </div>
+
+            <div className="bg-yellow-50 dark:bg-yellow-950/30 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4 mb-6">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" />
+                <div className="text-sm">
+                  <p className="font-semibold text-gray-900 dark:text-gray-100 mb-1">
+                    Pro Tip: Check Your Spam Folder
+                  </p>
+                  <p className="text-gray-600 dark:text-gray-400">
+                    If you don't see the email in your inbox within a few minutes, please check your spam or junk folder.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <Button
+              onClick={() => navigate('/login')}
+              className="w-full"
+            >
+              Go to Login
+              <ArrowRight className="w-5 h-5 ml-2" />
+            </Button>
+
+            <p className="mt-4 text-center text-sm text-gray-600 dark:text-gray-400">
+              Didn't receive the email?{' '}
+              <button
+                onClick={() => setShowEmailVerification(false)}
+                className="font-medium text-blue-600 dark:text-blue-400 hover:underline"
+              >
+                Try again
+              </button>
+            </p>
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center p-4">
