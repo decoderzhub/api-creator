@@ -29,6 +29,7 @@ export const Dashboard = () => {
   const [saveLoading, setSaveLoading] = useState(false);
   const [codeModalOpen, setCodeModalOpen] = useState(false);
   const [viewingCode, setViewingCode] = useState<{ name: string; code: string } | null>(null);
+  const [codeCopied, setCodeCopied] = useState(false);
   const { profile } = useAuth();
   const { addToast } = useToast();
 
@@ -569,11 +570,17 @@ export const Dashboard = () => {
                     onClick={() => {
                       navigator.clipboard.writeText(viewingCode.code);
                       addToast('Code copied to clipboard!', 'success');
+                      setCodeCopied(true);
+                      setTimeout(() => setCodeCopied(false), 2000);
                     }}
                     className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
                     title="Copy all code"
                   >
-                    <Copy className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                    {codeCopied ? (
+                      <Check className="w-5 h-5 text-green-600 dark:text-green-400" />
+                    ) : (
+                      <Copy className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                    )}
                   </button>
                   <button
                     onClick={() => setCodeModalOpen(false)}
