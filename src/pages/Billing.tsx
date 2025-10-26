@@ -104,11 +104,22 @@ export const Billing = () => {
         ? import.meta.env.VITE_STRIPE_PRO_PRICE_ID
         : import.meta.env.VITE_STRIPE_ENTERPRISE_PRICE_ID;
 
+      console.log('Attempting upgrade with:', { tier, priceId, apiUrl: API_BASE_URL });
+
       if (!priceId || priceId.includes('your_stripe') || priceId === 'undefined') {
         addToast('Stripe is not configured. Please contact support.', 'error');
         setLoading(false);
         return;
       }
+
+      const requestBody = {
+        price_id: priceId,
+        success_url: `${window.location.origin}/billing?success=true`,
+        cancel_url: `${window.location.origin}/billing?canceled=true`,
+        mode: 'subscription',
+      };
+
+      console.log('Request body:', requestBody);
 
       const response = await fetch(`${API_BASE_URL}/billing/create-checkout-session`, {
         method: 'POST',
@@ -116,16 +127,14 @@ export const Billing = () => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify({
-          price_id: priceId,
-          success_url: `${window.location.origin}/billing?success=true`,
-          cancel_url: `${window.location.origin}/billing?canceled=true`,
-          mode: 'subscription',
-        }),
+        body: JSON.stringify(requestBody),
       });
+
+      console.log('Response status:', response.status);
 
       if (!response.ok) {
         const errorText = await response.text();
+        console.error('Error response:', errorText);
         let errorMessage = 'Failed to create checkout session';
         try {
           const errorJson = JSON.parse(errorText);
@@ -137,8 +146,10 @@ export const Billing = () => {
       }
 
       const data = await response.json();
+      console.log('Success response:', data);
 
       if (data.url) {
+        console.log('Redirecting to:', data.url);
         window.location.href = data.url;
       } else {
         throw new Error('No checkout URL returned');
