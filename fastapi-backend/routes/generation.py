@@ -347,17 +347,17 @@ CRITICAL REQUIREMENTS:
 
 5. Visual enhancements:
    - Use Tailwind CSS classes for styling
-   - Add icons from lucide-react
+   - Add icons from lucide-react (available as LucideIcons.IconName)
    - Show request/response tabs
    - Copy button for results
    - Success/error toast notifications
 
-6. Code structure:
+6. CRITICAL CODE STRUCTURE - DO NOT USE IMPORTS:
    ```tsx
-   import { useState } from 'react';
-   import { Upload, Play, Download, Copy } from 'lucide-react';
+   const CustomAPITest = ({ apiUrl, apiKey }) => {
+     // React hooks are available as: useState, useEffect
+     // Lucide icons available as: LucideIcons.Upload, LucideIcons.Play, etc.
 
-   export const CustomAPITest = ({ apiUrl, apiKey }: { apiUrl: string; apiKey: string }) => {
      const [loading, setLoading] = useState(false);
      const [response, setResponse] = useState(null);
      const [error, setError] = useState('');
@@ -378,11 +378,17 @@ CRITICAL REQUIREMENTS:
    };
    ```
 
-7. Return ONLY the complete React component code, no explanations.
+7. ABSOLUTELY NO IMPORT STATEMENTS - All dependencies are provided as globals:
+   - useState, useEffect are available directly
+   - Icons: LucideIcons.Upload, LucideIcons.Play, LucideIcons.AlertCircle, etc.
+   - DO NOT write: import { useState } from 'react'
+   - DO NOT write: import { Upload } from 'lucide-react'
 
-8. For IMAGE APIs: Include image preview after upload and after response
-9. For AUDIO APIs: Include audio player for testing playback
-10. For DATA APIs: Include JSON formatter and copy functionality
+8. Return ONLY the component function definition starting with "const CustomAPITest"
+
+9. For IMAGE APIs: Include image preview after upload and after response
+10. For AUDIO APIs: Include audio player for testing playback
+11. For DATA APIs: Include JSON formatter and copy functionality
 
 Make it production-quality, beautiful, and intuitive."""
 
@@ -405,8 +411,16 @@ Generate a custom React testing component specifically designed for this API's f
 
         component_code = message.content[0].text.strip()
 
-        # Clean up code blocks
+        # Clean up code blocks and remove any import/export statements
         component_code = component_code.replace("```tsx", "").replace("```typescript", "").replace("```jsx", "").replace("```", "").strip()
+
+        # Remove import statements (in case AI includes them)
+        lines = component_code.split('\n')
+        cleaned_lines = []
+        for line in lines:
+            if not line.strip().startswith('import ') and not line.strip().startswith('export '):
+                cleaned_lines.append(line)
+        component_code = '\n'.join(cleaned_lines).strip()
 
         return {
             "componentCode": component_code,
