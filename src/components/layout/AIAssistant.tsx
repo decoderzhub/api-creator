@@ -58,7 +58,7 @@ export const AIAssistant = () => {
     {
       id: '1',
       role: 'assistant',
-      content: 'Hi! I\'m here to help you use API-Creator. Ask me how to:\n\n• Generate your first API\n• Store and use API keys\n• Navigate the platform\n• Get example prompts\n\nClick any example below or ask me anything!'
+      content: 'Hi! I\'m here to help you use API-Creator. Ask me how to:\n\n- Generate your first API\n- Store and use API keys\n- Navigate the platform\n- Get example prompts\n\nClick any example below or ask me anything!'
     }
   ]);
   const [inputValue, setInputValue] = useState('');
