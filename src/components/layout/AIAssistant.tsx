@@ -293,12 +293,12 @@ export const AIAssistant = () => {
                               </ul>
                             ),
                             ol: ({ children }) => (
-                              <ol className="list-decimal list-inside space-y-1.5 my-3 ml-2">
+                              <ol className="list-decimal list-outside space-y-1.5 my-3 ml-6">
                                 {children}
                               </ol>
                             ),
                             li: ({ children }) => (
-                              <li className="leading-relaxed text-foreground ml-1">
+                              <li className="leading-relaxed text-foreground pl-2">
                                 {children}
                               </li>
                             ),
