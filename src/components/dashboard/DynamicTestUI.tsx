@@ -47,14 +47,17 @@ export const DynamicTestUI: React.FC<DynamicTestUIProps> = ({
         );
 
         if (!response.ok) {
-          throw new Error('Failed to generate test UI');
+          const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
+          console.error('API Error:', response.status, errorData);
+          throw new Error(errorData.detail || `HTTP ${response.status}: Failed to generate test UI`);
         }
 
         const data = await response.json();
+        console.log('Generated component code length:', data.componentCode?.length);
         setComponentCode(data.componentCode);
       } catch (err) {
         console.error('Error generating test UI:', err);
-        setError('Failed to generate custom test interface');
+        setError(err instanceof Error ? err.message : 'Failed to generate custom test interface');
       } finally {
         setLoading(false);
       }
@@ -122,14 +125,24 @@ export const DynamicTestUI: React.FC<DynamicTestUIProps> = ({
   }
 
   if (error || !DynamicComponent) {
+    const isConfigError = error?.includes('500') || error?.includes('not configured');
+
     return (
-      <Card className="p-6 border-red-900/20 bg-red-950/20">
-        <div className="flex items-start space-x-3 text-red-400">
+      <Card className="p-6 border-yellow-900/20 bg-yellow-950/20">
+        <div className="flex items-start space-x-3 text-yellow-400">
           <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
           <div>
-            <p className="font-medium">Unable to generate test interface</p>
-            <p className="text-sm text-red-400/70 mt-1">
-              {error || 'The component could not be rendered. Please try regenerating your API.'}
+            <p className="font-medium">Custom test interface unavailable</p>
+            <p className="text-sm text-yellow-400/70 mt-1">
+              {error || 'The AI-generated component could not be rendered.'}
+            </p>
+            {isConfigError && (
+              <p className="text-xs text-yellow-400/60 mt-2 italic">
+                Note: Dynamic test UI requires ANTHROPIC_API_KEY to be configured on the server.
+              </p>
+            )}
+            <p className="text-xs text-yellow-400/60 mt-2">
+              Use the "Test Endpoint" buttons above or test via curl/Postman.
             </p>
           </div>
         </div>

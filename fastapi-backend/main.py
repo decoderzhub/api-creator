@@ -16,6 +16,7 @@ from api_loader import APILoader
 from auth import verify_api_key, log_api_usage
 from config import get_settings
 from rate_limiter import check_rate_limit, increment_rate_limit
+from supabase import create_client
 from routes.generation import router as generation_router
 from routes.deployment import router as deployment_router
 from routes.analytics import router as analytics_router
@@ -30,6 +31,7 @@ from monitoring import init_sentry, metrics_collector
 import sentry_sdk
 
 settings = get_settings()
+supabase = create_client(settings.supabase_url, settings.supabase_service_role_key)
 
 request_id_context = contextvars.ContextVar('request_id', default=None)
 
