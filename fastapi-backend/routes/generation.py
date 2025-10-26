@@ -36,6 +36,8 @@ class TestUIRequest(BaseModel):
     apiName: str
     apiId: str
     endpointUrl: str
+    improvementRequest: str = None
+    previousCode: str = None
 
 
 @router.post("/generate-api-code")
@@ -415,7 +417,22 @@ CRITICAL REQUIREMENTS:
 
 Make it production-quality, beautiful, and intuitive."""
 
-        user_prompt = f"""API Name: {request.apiName}
+        if request.improvementRequest and request.previousCode:
+            user_prompt = f"""API Name: {request.apiName}
+API ID: {request.apiId}
+Endpoint URL: {request.endpointUrl}
+
+FastAPI Code:
+{request.code}
+
+Previous Component Code:
+{request.previousCode}
+
+User's Improvement Request: {request.improvementRequest}
+
+Regenerate the test UI component with the requested improvements. Keep the same overall structure but apply the specific changes requested by the user."""
+        else:
+            user_prompt = f"""API Name: {request.apiName}
 API ID: {request.apiId}
 Endpoint URL: {request.endpointUrl}
 

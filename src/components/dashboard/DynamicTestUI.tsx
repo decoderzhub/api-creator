@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Loader2, AlertCircle, RefreshCw } from 'lucide-react';
+import { Loader2, AlertCircle, RefreshCw, MessageSquare, Send, X } from 'lucide-react';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import * as LucideIcons from 'lucide-react';
@@ -28,8 +28,12 @@ export const DynamicTestUI: React.FC<DynamicTestUIProps> = ({
   const [error, setError] = useState<string>('');
   const [regenerateKey, setRegenerateKey] = useState(0);
   const [generationProgress, setGenerationProgress] = useState<string>('Initializing...');
+  const [showChat, setShowChat] = useState(false);
+  const [chatMessage, setChatMessage] = useState('');
+  const [chatHistory, setChatHistory] = useState<Array<{ role: 'user' | 'assistant'; content: string }>>([]);
+  const [chatLoading, setChatLoading] = useState(false);
 
-  const fetchTestUI = useCallback(async () => {
+  const fetchTestUI = useCallback(async (improvementRequest?: string) => {
     try {
       setLoading(true);
       setError('');
@@ -57,6 +61,8 @@ export const DynamicTestUI: React.FC<DynamicTestUIProps> = ({
             apiName,
             apiId,
             endpointUrl: apiUrl,
+            improvementRequest,
+            previousCode: improvementRequest ? componentCode : undefined,
           }),
         }
       );
@@ -85,11 +91,35 @@ export const DynamicTestUI: React.FC<DynamicTestUIProps> = ({
     } finally {
       setLoading(false);
     }
-  }, [apiId, code, apiName, apiUrl]);
+  }, [apiId, code, apiName, apiUrl, componentCode]);
 
   const handleRegenerate = () => {
     setRegenerateKey(prev => prev + 1);
     fetchTestUI();
+  };
+
+  const handleChatSubmit = async () => {
+    if (!chatMessage.trim()) return;
+
+    const userMessage = chatMessage.trim();
+    setChatMessage('');
+    setChatHistory(prev => [...prev, { role: 'user', content: userMessage }]);
+    setChatLoading(true);
+
+    try {
+      await fetchTestUI(userMessage);
+      setChatHistory(prev => [
+        ...prev,
+        { role: 'assistant', content: 'Test UI regenerated with your improvements!' }
+      ]);
+    } catch (err) {
+      setChatHistory(prev => [
+        ...prev,
+        { role: 'assistant', content: `Failed to apply changes: ${err instanceof Error ? err.message : 'Unknown error'}` }
+      ]);
+    } finally {
+      setChatLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -220,17 +250,86 @@ export const DynamicTestUI: React.FC<DynamicTestUIProps> = ({
           <span className="inline-block w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
           <span>Custom test interface loaded</span>
         </div>
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={handleRegenerate}
-          disabled={loading}
-          className="text-xs"
-        >
-          <RefreshCw className={`w-3 h-3 mr-1 ${loading ? 'animate-spin' : ''}`} />
-          {loading ? 'Regenerating...' : 'Regenerate'}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => setShowChat(!showChat)}
+            className="text-xs"
+          >
+            <MessageSquare className="w-3 h-3 mr-1" />
+            Improve
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={handleRegenerate}
+            disabled={loading}
+            className="text-xs"
+          >
+            <RefreshCw className={`w-3 h-3 mr-1 ${loading ? 'animate-spin' : ''}`} />
+            {loading ? 'Regenerating...' : 'Regenerate'}
+          </Button>
+        </div>
       </div>
+      {showChat && (
+        <Card className="p-4 border-blue-900/20 bg-blue-950/10">
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-medium text-slate-300">Improve Test UI</h3>
+              <button
+                onClick={() => setShowChat(false)}
+                className="text-slate-400 hover:text-slate-300"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {chatHistory.length > 0 && (
+              <div className="space-y-2 max-h-40 overflow-y-auto">
+                {chatHistory.map((msg, idx) => (
+                  <div
+                    key={idx}
+                    className={`text-xs p-2 rounded ${
+                      msg.role === 'user'
+                        ? 'bg-blue-900/30 text-blue-200 ml-4'
+                        : 'bg-slate-800/50 text-slate-300 mr-4'
+                    }`}
+                  >
+                    {msg.content}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={chatMessage}
+                onChange={(e) => setChatMessage(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && handleChatSubmit()}
+                placeholder="e.g., 'make input text black' or 'fix the endpoint URL'"
+                disabled={chatLoading || loading}
+                className="flex-1 px-3 py-2 text-sm bg-slate-900/50 border border-slate-700 rounded text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-500"
+              />
+              <Button
+                size="sm"
+                onClick={handleChatSubmit}
+                disabled={!chatMessage.trim() || chatLoading || loading}
+              >
+                {chatLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Send className="w-4 h-4" />
+                )}
+              </Button>
+            </div>
+            <p className="text-xs text-slate-500">
+              Describe what you want to change and the AI will regenerate the test UI.
+            </p>
+          </div>
+        </Card>
+      )}
       <DynamicComponent apiUrl={apiUrl} apiKey={apiKey} />
     </div>
   );
