@@ -101,37 +101,21 @@ export const DynamicTestUI: React.FC<DynamicTestUIProps> = ({
     try {
       console.log('Attempting to create component function...');
 
-      // Escape backticks in component code to prevent template literal conflicts
-      const escapedCode = componentCode.replace(/`/g, '\\`').replace(/\$/g, '\\$');
+      // Create a wrapper that provides the necessary context
+      const wrappedCode = `
+        (function(React, useState, useEffect, LucideIcons, apiUrl, apiKey) {
+          ${componentCode}
 
-      // Create a safe execution context with required dependencies
-      const componentFunction = new Function(
-        'React',
-        'useState',
-        'useEffect',
-        'LucideIcons',
-        'apiUrl',
-        'apiKey',
-        `
-        ${escapedCode}
-
-        // Return the component (look for export or default export)
-        if (typeof CustomAPITest !== 'undefined') {
           return CustomAPITest;
-        }
+        })
+      `;
 
-        // Fallback: try to find any component definition
-        const match = componentCode.match(/(?:export\\s+)?(?:const|function)\\s+(\\w+)/);
-        if (match && typeof eval(match[1]) !== 'undefined') {
-          return eval(match[1]);
-        }
+      console.log('Evaluating component code...');
+      // Use indirect eval to execute in global scope
+      const componentFactory = (0, eval)(wrappedCode);
 
-        throw new Error('No component found in generated code');
-        `
-      );
-
-      console.log('Component function created, executing...');
-      const Component = componentFunction(
+      console.log('Component factory created, executing...');
+      const Component = componentFactory(
         React,
         useState,
         useEffect,
