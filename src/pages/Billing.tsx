@@ -5,7 +5,7 @@ import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../hooks/useToast';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { API_BASE_URL } from '../lib/endpoints';
 
 const plans = [
@@ -71,6 +71,17 @@ export const Billing = () => {
   const { addToast } = useToast();
   const [loading, setLoading] = useState(false);
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('success') === 'true') {
+      addToast('Subscription activated! Welcome to Pro!', 'success');
+      window.history.replaceState({}, '', '/billing');
+    } else if (params.get('canceled') === 'true') {
+      addToast('Checkout canceled. You can try again anytime.', 'info');
+      window.history.replaceState({}, '', '/billing');
+    }
+  }, [addToast]);
+
   const handleUpgrade = async (tier: string) => {
     if (tier === 'enterprise') {
       addToast('Please contact sales@apibuilder.dev for enterprise plans', 'info');
@@ -114,8 +125,15 @@ export const Billing = () => {
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.detail || 'Failed to create checkout session');
+        const errorText = await response.text();
+        let errorMessage = 'Failed to create checkout session';
+        try {
+          const errorJson = JSON.parse(errorText);
+          errorMessage = errorJson.detail || errorMessage;
+        } catch {
+          errorMessage = errorText || errorMessage;
+        }
+        throw new Error(errorMessage);
       }
 
       const data = await response.json();

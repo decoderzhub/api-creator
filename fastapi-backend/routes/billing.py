@@ -261,11 +261,12 @@ async def sync_customer_subscription(customer_id: str, supabase):
             return
 
         subscription = subscriptions.data[0]
+        price_id = subscription["items"]["data"][0]["price"]["id"]
 
         update_data = {
             "customer_id": customer_id,
             "subscription_id": subscription.id,
-            "price_id": subscription["items"]["data"][0]["price"]["id"],
+            "price_id": price_id,
             "current_period_start": subscription.current_period_start,
             "current_period_end": subscription.current_period_end,
             "cancel_at_period_end": subscription.cancel_at_period_end,
@@ -282,6 +283,36 @@ async def sync_customer_subscription(customer_id: str, supabase):
             update_data,
             on_conflict="customer_id"
         ).execute()
+
+        # Determine plan tier based on price ID and update user's plan
+        plan = "free"
+        pro_price_id = os.getenv("STRIPE_PRO_PRICE_ID")
+        enterprise_price_id = os.getenv("STRIPE_ENTERPRISE_PRICE_ID")
+
+        if subscription.status == "active":
+            if price_id == pro_price_id:
+                plan = "pro"
+            elif price_id == enterprise_price_id:
+                plan = "enterprise"
+
+            # Update user's plan in the users table
+            customer_lookup = supabase.table("stripe_customers").select("user_id").eq("customer_id", customer_id).maybeSingle().execute()
+
+            if customer_lookup.data:
+                user_id = customer_lookup.data["user_id"]
+                supabase.table("users").update({
+                    "plan": plan,
+                    "stripe_customer_id": customer_id
+                }).eq("id", user_id).execute()
+                logger.info(f"Updated user {user_id} to {plan} plan")
+        elif subscription.status in ["canceled", "incomplete_expired", "unpaid"]:
+            # Downgrade to free plan
+            customer_lookup = supabase.table("stripe_customers").select("user_id").eq("customer_id", customer_id).maybeSingle().execute()
+
+            if customer_lookup.data:
+                user_id = customer_lookup.data["user_id"]
+                supabase.table("users").update({"plan": "free"}).eq("id", user_id).execute()
+                logger.info(f"Downgraded user {user_id} to free plan")
 
         logger.info(f"Successfully synced subscription for customer: {customer_id}")
 
