@@ -82,7 +82,7 @@ async def create_checkout_session(
     user_email = current_user["email"]
 
     try:
-        customer_response = supabase.table("stripe_customers").select("customer_id").eq("user_id", user_id).is_("deleted_at", None).maybeSingle().execute()
+        customer_response = supabase.table("stripe_customers").select("customer_id").eq("user_id", user_id).is_("deleted_at", None).maybe_single().execute()
 
         customer_id = None
 
@@ -111,7 +111,7 @@ async def create_checkout_session(
             customer_id = customer_response.data["customer_id"]
 
             if request.mode == "subscription":
-                subscription_response = supabase.table("stripe_subscriptions").select("status").eq("customer_id", customer_id).maybeSingle().execute()
+                subscription_response = supabase.table("stripe_subscriptions").select("status").eq("customer_id", customer_id).maybe_single().execute()
 
                 if not subscription_response.data:
                     supabase.table("stripe_subscriptions").insert({
@@ -295,7 +295,7 @@ async def sync_customer_subscription(customer_id: str, supabase):
                 plan = "enterprise"
 
             # Update user's plan in the users table
-            customer_lookup = supabase.table("stripe_customers").select("user_id").eq("customer_id", customer_id).maybeSingle().execute()
+            customer_lookup = supabase.table("stripe_customers").select("user_id").eq("customer_id", customer_id).maybe_single().execute()
 
             if customer_lookup.data:
                 user_id = customer_lookup.data["user_id"]
@@ -306,7 +306,7 @@ async def sync_customer_subscription(customer_id: str, supabase):
                 logger.info(f"Updated user {user_id} to {plan} plan")
         elif subscription.status in ["canceled", "incomplete_expired", "unpaid"]:
             # Downgrade to free plan
-            customer_lookup = supabase.table("stripe_customers").select("user_id").eq("customer_id", customer_id).maybeSingle().execute()
+            customer_lookup = supabase.table("stripe_customers").select("user_id").eq("customer_id", customer_id).maybe_single().execute()
 
             if customer_lookup.data:
                 user_id = customer_lookup.data["user_id"]
@@ -328,7 +328,7 @@ async def get_subscription_status(current_user: dict = Depends(get_current_user)
     user_id = current_user["id"]
 
     try:
-        customer_response = supabase.table("stripe_customers").select("customer_id").eq("user_id", user_id).is_("deleted_at", None).maybeSingle().execute()
+        customer_response = supabase.table("stripe_customers").select("customer_id").eq("user_id", user_id).is_("deleted_at", None).maybe_single().execute()
 
         if not customer_response.data:
             return {
@@ -339,7 +339,7 @@ async def get_subscription_status(current_user: dict = Depends(get_current_user)
 
         customer_id = customer_response.data["customer_id"]
 
-        subscription_response = supabase.table("stripe_subscriptions").select("*").eq("customer_id", customer_id).maybeSingle().execute()
+        subscription_response = supabase.table("stripe_subscriptions").select("*").eq("customer_id", customer_id).maybe_single().execute()
 
         if not subscription_response.data or subscription_response.data.get("status") in ["not_started", "canceled", "incomplete_expired"]:
             return {
