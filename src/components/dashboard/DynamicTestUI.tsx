@@ -63,7 +63,10 @@ export const DynamicTestUI: React.FC<DynamicTestUIProps> = ({
       }
 
       const data = await response.json();
-      console.log('Generated component code length:', data.componentCode?.length);
+      console.log('=== GENERATED COMPONENT CODE ===');
+      console.log(data.componentCode);
+      console.log('=== END COMPONENT CODE ===');
+      console.log('Component code length:', data.componentCode?.length);
       setComponentCode(data.componentCode);
     } catch (err) {
       console.error('Error generating test UI:', err);
@@ -86,6 +89,8 @@ export const DynamicTestUI: React.FC<DynamicTestUIProps> = ({
     if (!componentCode) return null;
 
     try {
+      console.log('Attempting to create component function...');
+
       // Create a safe execution context with required dependencies
       const componentFunction = new Function(
         'React',
@@ -112,6 +117,7 @@ export const DynamicTestUI: React.FC<DynamicTestUIProps> = ({
         `
       );
 
+      console.log('Component function created, executing...');
       const Component = componentFunction(
         React,
         useState,
@@ -121,9 +127,11 @@ export const DynamicTestUI: React.FC<DynamicTestUIProps> = ({
         apiKey
       );
 
+      console.log('Component executed successfully:', typeof Component);
       return Component;
     } catch (err) {
       console.error('Error creating dynamic component:', err);
+      console.error('Component code that failed:', componentCode);
       setError(`Failed to render component: ${err instanceof Error ? err.message : 'Unknown error'}`);
       return null;
     }
