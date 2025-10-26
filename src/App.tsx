@@ -45,7 +45,7 @@ const MainLayout = ({ children }: { children: React.ReactNode }) => {
   const { toasts, removeToast } = useToast();
 
   return (
-    <div className="flex h-screen overflow-hidden bg-gray-50 dark:bg-gray-900">
+    <div className="flex h-screen overflow-hidden bg-background">
       <Sidebar onLogout={signOut} />
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header
@@ -54,7 +54,7 @@ const MainLayout = ({ children }: { children: React.ReactNode }) => {
           userEmail={profile?.email}
           userPlan={profile?.plan}
         />
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 overflow-y-auto bg-gradient-to-br from-background via-background to-muted/20">
           {children}
         </main>
       </div>
