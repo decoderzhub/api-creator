@@ -83,12 +83,18 @@ export const Billing = () => {
   }, [addToast]);
 
   const handleUpgrade = async (tier: string) => {
+    console.log('=== HANDLE UPGRADE CALLED ===');
+    console.log('Tier:', tier);
+    console.log('Session:', session ? 'exists' : 'null');
+    console.log('Profile:', profile);
+
     if (tier === 'enterprise') {
       addToast('Please contact sales@apibuilder.dev for enterprise plans', 'info');
       return;
     }
 
     if (tier === 'free') {
+      console.log('Free tier clicked, returning early');
       return;
     }
 
@@ -97,6 +103,7 @@ export const Billing = () => {
       return;
     }
 
+    console.log('Setting loading to true');
     setLoading(true);
 
     try {
@@ -231,7 +238,13 @@ export const Billing = () => {
                     className="w-full"
                     variant={isCurrentPlan ? 'outline' : 'primary'}
                     disabled={isCurrentPlan || loading}
-                    onClick={() => handleUpgrade(plan.tier)}
+                    onClick={() => {
+                      console.log('=== BUTTON CLICKED ===');
+                      console.log('Plan tier:', plan.tier);
+                      console.log('Is current plan:', isCurrentPlan);
+                      console.log('Loading state:', loading);
+                      handleUpgrade(plan.tier);
+                    }}
                   >
                     {loading ? 'Loading...' : isCurrentPlan ? 'Current Plan' : plan.cta}
                   </Button>
