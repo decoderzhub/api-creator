@@ -1,11 +1,12 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { User as SupabaseUser } from '@supabase/supabase-js';
+import { User as SupabaseUser, Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import { User } from '../lib/types';
 
 interface AuthContextType {
   user: SupabaseUser | null;
   profile: User | null;
+  session: Session | null;
   loading: boolean;
   signUp: (email: string, password: string) => Promise<{ needsEmailVerification: boolean }>;
   signIn: (email: string, password: string) => Promise<void>;
@@ -25,10 +26,12 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<SupabaseUser | null>(null);
   const [profile, setProfile] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
         loadProfile(session.user.id);
@@ -39,6 +42,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((async () => {
       (async () => {
         const { data: { session } } = await supabase.auth.getSession();
+        setSession(session);
         setUser(session?.user ?? null);
         if (session?.user) {
           await loadProfile(session.user.id);
@@ -122,7 +126,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, profile, loading, signUp, signIn, signOut }}>
+    <AuthContext.Provider value={{ user, profile, session, loading, signUp, signIn, signOut }}>
       {children}
     </AuthContext.Provider>
   );
