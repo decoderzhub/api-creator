@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Activity, AlertCircle, CheckCircle, Clock, Cpu, Database, HardDrive, Server, TrendingUp, Zap, Lock } from 'lucide-react';
-import { Card } from '../components/ui/Card';
+import { Card } from '../components/ui/card';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -189,21 +189,21 @@ export default function Monitoring() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-6">
       <div>
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">
+            <h1 className="text-3xl font-bold text-foreground">
               {isAdmin ? 'System Monitoring' : 'My API Monitoring'}
             </h1>
-            <p className="mt-2 text-gray-600">
+            <p className="mt-2 text-muted-foreground">
               {isAdmin
                 ? 'Real-time system health and performance metrics'
                 : 'Monitor your API usage and performance'}
             </p>
           </div>
           {isAdmin && (
-            <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-700 rounded-lg">
+            <div className="flex items-center gap-2 px-4 py-2 bg-primary/10 text-primary rounded-lg border border-primary/20">
               <Lock className="w-4 h-4" />
               <span className="text-sm font-medium">Admin View</span>
             </div>
@@ -219,8 +219,8 @@ export default function Monitoring() {
                 {getStatusIcon(health.status)}
               </div>
               <div>
-                <h2 className="text-xl font-semibold text-gray-900">Gateway Status</h2>
-                <p className="text-sm text-gray-600">
+                <h2 className="text-xl font-semibold text-foreground">Gateway Status</h2>
+                <p className="text-sm text-muted-foreground">
                   Last updated: {health.timestamp
                     ? new Date(health.timestamp).toLocaleString()
                     : 'Just now'}
@@ -243,8 +243,8 @@ export default function Monitoring() {
                   <Clock className="w-6 h-6 text-blue-600" />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">Uptime</p>
-                  <p className="text-2xl font-bold text-gray-900">{metrics.uptime_formatted}</p>
+                  <p className="text-sm text-muted-foreground">Uptime</p>
+                  <p className="text-2xl font-bold text-foreground">{metrics.uptime_formatted}</p>
                 </div>
               </div>
             </Card>
@@ -255,8 +255,8 @@ export default function Monitoring() {
                   <Activity className="w-6 h-6 text-green-600" />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">Total Requests</p>
-                  <p className="text-2xl font-bold text-gray-900">{metrics.total_requests.toLocaleString()}</p>
+                  <p className="text-sm text-muted-foreground">Total Requests</p>
+                  <p className="text-2xl font-bold text-foreground">{metrics.total_requests.toLocaleString()}</p>
                 </div>
               </div>
             </Card>
@@ -267,8 +267,8 @@ export default function Monitoring() {
                   <Zap className="w-6 h-6 text-yellow-600" />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">Avg Response</p>
-                  <p className="text-2xl font-bold text-gray-900">{metrics.avg_response_time_ms}ms</p>
+                  <p className="text-sm text-muted-foreground">Avg Response</p>
+                  <p className="text-2xl font-bold text-foreground">{metrics.avg_response_time_ms}ms</p>
                 </div>
               </div>
             </Card>
@@ -279,8 +279,8 @@ export default function Monitoring() {
                   <AlertCircle className="w-6 h-6 text-red-600" />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">Error Rate</p>
-                  <p className="text-2xl font-bold text-gray-900">{(metrics.error_rate * 100).toFixed(2)}%</p>
+                  <p className="text-sm text-muted-foreground">Error Rate</p>
+                  <p className="text-2xl font-bold text-foreground">{(metrics.error_rate * 100).toFixed(2)}%</p>
                 </div>
               </div>
             </Card>
@@ -291,8 +291,8 @@ export default function Monitoring() {
                   <HardDrive className="w-6 h-6 text-purple-600" />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">Memory Usage</p>
-                  <p className="text-2xl font-bold text-gray-900">{metrics.memory_usage_mb} MB</p>
+                  <p className="text-sm text-muted-foreground">Memory Usage</p>
+                  <p className="text-2xl font-bold text-foreground">{metrics.memory_usage_mb} MB</p>
                 </div>
               </div>
             </Card>
@@ -303,8 +303,8 @@ export default function Monitoring() {
                   <Cpu className="w-6 h-6 text-indigo-600" />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">CPU Usage</p>
-                  <p className="text-2xl font-bold text-gray-900">{metrics.cpu_percent}%</p>
+                  <p className="text-sm text-muted-foreground">CPU Usage</p>
+                  <p className="text-2xl font-bold text-foreground">{metrics.cpu_percent}%</p>
                 </div>
               </div>
             </Card>
@@ -319,8 +319,8 @@ export default function Monitoring() {
                   <Server className="w-6 h-6 text-teal-600" />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">Loaded APIs</p>
-                  <p className="text-2xl font-bold text-gray-900">{health.loaded_apis}</p>
+                  <p className="text-sm text-muted-foreground">Loaded APIs</p>
+                  <p className="text-2xl font-bold text-foreground">{health.loaded_apis}</p>
                 </div>
               </div>
             </Card>
@@ -331,8 +331,8 @@ export default function Monitoring() {
                   <Database className={`w-6 h-6 ${health.database === 'connected' ? 'text-green-600' : 'text-red-600'}`} />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">Database</p>
-                  <p className="text-2xl font-bold text-gray-900 capitalize">{health.database}</p>
+                  <p className="text-sm text-muted-foreground">Database</p>
+                  <p className="text-2xl font-bold text-foreground capitalize">{health.database}</p>
                 </div>
               </div>
             </Card>
@@ -346,19 +346,19 @@ export default function Monitoring() {
             <Card className="p-6">
               <div className="flex items-center space-x-3 mb-4">
                 <TrendingUp className="w-5 h-5 text-blue-600" />
-                <h3 className="font-semibold text-gray-900">Last 24 Hours</h3>
+                <h3 className="font-semibold text-foreground">Last 24 Hours</h3>
               </div>
               <div className="space-y-2">
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Total Requests</span>
-                  <span className="font-semibold">{usage.total_requests_today.toLocaleString()}</span>
+                  <span className="text-muted-foreground">Total Requests</span>
+                  <span className="font-semibold text-foreground">{usage.total_requests_today.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Avg Response Time</span>
-                  <span className="font-semibold">{usage.avg_response_time}ms</span>
+                  <span className="text-muted-foreground">Avg Response Time</span>
+                  <span className="font-semibold text-foreground">{usage.avg_response_time}ms</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Errors</span>
+                  <span className="text-muted-foreground">Errors</span>
                   <span className="font-semibold text-red-600">{usage.error_count}</span>
                 </div>
               </div>
@@ -367,16 +367,16 @@ export default function Monitoring() {
             <Card className="p-6">
               <div className="flex items-center space-x-3 mb-4">
                 <Activity className="w-5 h-5 text-green-600" />
-                <h3 className="font-semibold text-gray-900">Last Hour</h3>
+                <h3 className="font-semibold text-foreground">Last Hour</h3>
               </div>
               <div className="space-y-2">
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Total Requests</span>
-                  <span className="font-semibold">{usage.total_requests_hour.toLocaleString()}</span>
+                  <span className="text-muted-foreground">Total Requests</span>
+                  <span className="font-semibold text-foreground">{usage.total_requests_hour.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Requests/min</span>
-                  <span className="font-semibold">{Math.round(usage.total_requests_hour / 60)}</span>
+                  <span className="text-muted-foreground">Requests/min</span>
+                  <span className="font-semibold text-foreground">{Math.round(usage.total_requests_hour / 60)}</span>
                 </div>
               </div>
             </Card>
@@ -384,17 +384,17 @@ export default function Monitoring() {
             <Card className="p-6">
               <div className="flex items-center space-x-3 mb-4">
                 <CheckCircle className="w-5 h-5 text-teal-600" />
-                <h3 className="font-semibold text-gray-900">Monitoring</h3>
+                <h3 className="font-semibold text-foreground">Monitoring</h3>
               </div>
               <div className="space-y-2">
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Sentry</span>
-                  <span className={`font-semibold ${health?.sentry_enabled ? 'text-green-600' : 'text-gray-400'}`}>
+                  <span className="text-muted-foreground">Sentry</span>
+                  <span className={`font-semibold ${health?.sentry_enabled ? 'text-green-600' : 'text-muted-foreground'}`}>
                     {health?.sentry_enabled ? 'Enabled' : 'Disabled'}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Auto Refresh</span>
+                  <span className="text-muted-foreground">Auto Refresh</span>
                   <span className="font-semibold text-green-600">30s</span>
                 </div>
               </div>
@@ -403,24 +403,24 @@ export default function Monitoring() {
 
           {usage.top_apis.length > 0 && (
             <Card className="p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              <h3 className="text-lg font-semibold text-foreground mb-4">
                 {isAdmin ? 'Top APIs (24h)' : 'My Top APIs (24h)'}
               </h3>
               <div className="space-y-3">
                 {usage.top_apis.map((api, index) => (
-                  <div key={api.api_id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <div key={api.api_id} className="flex items-center justify-between p-3 bg-accent rounded-lg">
                     <div className="flex items-center space-x-3">
-                      <div className="flex-shrink-0 w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-semibold">
+                      <div className="flex-shrink-0 w-8 h-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center font-semibold">
                         {index + 1}
                       </div>
                       <div>
-                        <p className="font-medium text-gray-900">{api.api_name}</p>
-                        <p className="text-sm text-gray-500">{api.api_id}</p>
+                        <p className="font-medium text-foreground">{api.api_name}</p>
+                        <p className="text-sm text-muted-foreground">{api.api_id}</p>
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="font-semibold text-gray-900">{api.request_count.toLocaleString()}</p>
-                      <p className="text-sm text-gray-500">requests</p>
+                      <p className="font-semibold text-foreground">{api.request_count.toLocaleString()}</p>
+                      <p className="text-sm text-muted-foreground">requests</p>
                     </div>
                   </div>
                 ))}
