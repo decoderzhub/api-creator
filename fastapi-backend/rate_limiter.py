@@ -23,7 +23,7 @@ def get_current_window_start() -> datetime:
     return now.replace(minute=0, second=0, microsecond=0)
 
 
-async def check_rate_limit(user_id: str, user_plan: str) -> Tuple[bool, Dict]:
+async def check_rate_limit(user_id: str, user_plan: str, custom_rate_limit: Optional[int] = None) -> Tuple[bool, Dict]:
     """
     Check if user has exceeded their rate limit
 
@@ -33,7 +33,7 @@ async def check_rate_limit(user_id: str, user_plan: str) -> Tuple[bool, Dict]:
     """
     try:
         window_start = get_current_window_start()
-        limit = TIER_LIMITS.get(user_plan, TIER_LIMITS['free'])
+        limit = custom_rate_limit if custom_rate_limit is not None else TIER_LIMITS.get(user_plan, TIER_LIMITS['free'])
 
         # Get or create rate limit record for current window
         response = supabase.table("rate_limit_tracking")\
@@ -112,7 +112,7 @@ async def increment_rate_limit(user_id: str) -> None:
         print(f"Error incrementing rate limit: {e}")
 
 
-async def get_rate_limit_status(user_id: str, user_plan: str) -> Dict:
+async def get_rate_limit_status(user_id: str, user_plan: str, custom_rate_limit: Optional[int] = None) -> Dict:
     """
     Get current rate limit status for a user
 
@@ -121,7 +121,7 @@ async def get_rate_limit_status(user_id: str, user_plan: str) -> Dict:
     """
     try:
         window_start = get_current_window_start()
-        limit = TIER_LIMITS.get(user_plan, TIER_LIMITS['free'])
+        limit = custom_rate_limit if custom_rate_limit is not None else TIER_LIMITS.get(user_plan, TIER_LIMITS['free'])
 
         response = supabase.table("rate_limit_tracking")\
             .select("*")\
@@ -140,7 +140,8 @@ async def get_rate_limit_status(user_id: str, user_plan: str) -> Dict:
             "used": current_count,
             "remaining": max(0, limit - current_count),
             "reset": int(reset_time.timestamp()),
-            "plan": user_plan
+            "plan": user_plan,
+            "is_custom": custom_rate_limit is not None
         }
 
     except Exception as e:

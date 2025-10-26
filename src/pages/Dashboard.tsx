@@ -47,6 +47,7 @@ export const Dashboard = () => {
     remaining: number;
     reset: number;
     plan: string;
+    is_custom?: boolean;
   } | null>(null);
   const [resetCountdown, setResetCountdown] = useState<string>('');
   const [publishModalOpen, setPublishModalOpen] = useState(false);

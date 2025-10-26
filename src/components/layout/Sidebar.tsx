@@ -1,6 +1,7 @@
 import { Link, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Home, Zap, LayoutDashboard, Store, CreditCard, LogOut, User, MessageSquare, Key, Activity, Code2 } from 'lucide-react';
+import { Home, Zap, LayoutDashboard, Store, CreditCard, LogOut, User, MessageSquare, Key, Activity, Code2, Shield } from 'lucide-react';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface SidebarProps {
   onLogout: () => void;
@@ -8,6 +9,7 @@ interface SidebarProps {
 
 export const Sidebar = ({ onLogout }: SidebarProps) => {
   const location = useLocation();
+  const { profile } = useAuth();
 
   const navItems = [
     { path: '/', icon: Home, label: 'Home' },
@@ -24,6 +26,10 @@ export const Sidebar = ({ onLogout }: SidebarProps) => {
     { path: '/billing', icon: CreditCard, label: 'Billing' },
     { path: '/profile', icon: User, label: 'Profile' },
   ];
+
+  if (profile?.is_admin) {
+    bottomNavItems.unshift({ path: '/admin', icon: Shield, label: 'Admin' });
+  }
 
   return (
     <aside className="w-64 h-screen bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 flex flex-col">

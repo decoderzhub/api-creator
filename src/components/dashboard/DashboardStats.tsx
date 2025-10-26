@@ -18,6 +18,7 @@ interface DashboardStatsProps {
     remaining: number;
     reset: number;
     plan: string;
+    is_custom?: boolean;
   } | null;
   resetCountdown: string;
 }
@@ -80,14 +81,21 @@ export const DashboardStats = ({ stats, limits, rateLimitStatus, resetCountdown 
         <CardContent className="pt-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Rate Limit</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
+                Rate Limit
+                {rateLimitStatus?.is_custom && (
+                  <span className="ml-2 text-xs px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded">
+                    Custom
+                  </span>
+                )}
+              </p>
               {rateLimitStatus ? (
                 <>
                   <p className="text-3xl font-bold text-gray-900 dark:text-gray-100">
-                    {rateLimitStatus.remaining}
+                    {rateLimitStatus.remaining.toLocaleString()}
                   </p>
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    of {rateLimitStatus.limit} remaining
+                    of {rateLimitStatus.limit.toLocaleString()} remaining
                   </p>
                   {resetCountdown && (
                     <p className="text-xs text-gray-500 dark:text-gray-400">

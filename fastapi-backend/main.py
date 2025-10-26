@@ -231,7 +231,12 @@ async def proxy_to_user_api(
 
     user_id = api_metadata.get("user_id")
     user_plan = api_metadata.get("user_plan", "free")
-    is_allowed, rate_limit_info = await check_rate_limit(user_id, user_plan)
+
+    # Get custom rate limit if set
+    user_response = supabase.table("users").select("custom_rate_limit").eq("id", user_id).single().execute()
+    custom_rate_limit = user_response.data.get('custom_rate_limit') if user_response.data else None
+
+    is_allowed, rate_limit_info = await check_rate_limit(user_id, user_plan, custom_rate_limit)
 
     if not is_allowed:
         logger.warning(

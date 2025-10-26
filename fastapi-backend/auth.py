@@ -67,15 +67,16 @@ async def get_user_rate_limit_status(user_id: str) -> Dict:
     Get the current rate limit status for a user
     """
     try:
-        # Get user's plan
-        user_response = supabase.table("users").select("plan").eq("id", user_id).single().execute()
+        # Get user's plan and custom rate limit
+        user_response = supabase.table("users").select("plan, custom_rate_limit").eq("id", user_id).single().execute()
         if not user_response.data:
             return {"error": "User not found"}
 
         user_plan = user_response.data.get('plan', 'free')
+        custom_rate_limit = user_response.data.get('custom_rate_limit')
 
         # Get rate limit status
-        status = await get_rate_limit_status(user_id, user_plan)
+        status = await get_rate_limit_status(user_id, user_plan, custom_rate_limit)
         return status
 
     except Exception as e:
