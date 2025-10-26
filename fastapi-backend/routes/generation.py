@@ -384,7 +384,13 @@ CRITICAL REQUIREMENTS:
    - DO NOT write: import { useState } from 'react'
    - DO NOT write: import { Upload } from 'lucide-react'
 
-8. Return ONLY the component function definition starting with "const CustomAPITest"
+8. CRITICAL: Return ONLY the component function definition starting with "const CustomAPITest"
+   - NO explanatory text before the code
+   - NO explanatory text after the code
+   - NO markdown formatting
+   - ONLY the JavaScript/TypeScript code
+   - Start immediately with: const CustomAPITest = ({ apiUrl, apiKey }) => {
+   - End immediately after the closing }; of the component
 
 9. For IMAGE APIs: Include image preview after upload and after response
 10. For AUDIO APIs: Include audio player for testing playback
@@ -413,6 +419,38 @@ Generate a custom React testing component specifically designed for this API's f
 
         # Clean up code blocks and remove any import/export statements
         component_code = component_code.replace("```tsx", "").replace("```typescript", "").replace("```jsx", "").replace("```", "").strip()
+
+        # Extract only the component code (remove explanatory text before/after)
+        # Look for the component definition
+        import re
+
+        # Find the start of the component definition
+        component_match = re.search(r'const\s+CustomAPITest\s*=', component_code, re.MULTILINE)
+        if component_match:
+            # Extract from the component definition to the end
+            component_code = component_code[component_match.start():]
+
+            # Find the last closing brace that matches the component
+            # Count braces to find where the component ends
+            brace_count = 0
+            in_component = False
+            end_index = len(component_code)
+
+            for i, char in enumerate(component_code):
+                if char == '{':
+                    brace_count += 1
+                    in_component = True
+                elif char == '}':
+                    brace_count -= 1
+                    if in_component and brace_count == 0:
+                        # Found the end of the component
+                        end_index = i + 1
+                        # Look for the semicolon after the closing brace
+                        if end_index < len(component_code) and component_code[end_index] == ';':
+                            end_index += 1
+                        break
+
+            component_code = component_code[:end_index].strip()
 
         # Remove import statements (in case AI includes them)
         lines = component_code.split('\n')

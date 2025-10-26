@@ -26,11 +26,13 @@ export const DynamicTestUI: React.FC<DynamicTestUIProps> = ({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');
   const [regenerateKey, setRegenerateKey] = useState(0);
+  const [generationProgress, setGenerationProgress] = useState<string>('Initializing...');
 
   const fetchTestUI = useCallback(async () => {
     try {
       setLoading(true);
       setError('');
+      setGenerationProgress('Authenticating...');
 
       console.log('Fetching test UI from:', `${API_BASE_URL}/generate-test-ui`);
 
@@ -38,6 +40,8 @@ export const DynamicTestUI: React.FC<DynamicTestUIProps> = ({
       if (!session) {
         throw new Error('Not authenticated');
       }
+
+      setGenerationProgress('Analyzing your API code...');
 
       const response = await fetch(
         `${API_BASE_URL}/generate-test-ui`,
@@ -56,17 +60,23 @@ export const DynamicTestUI: React.FC<DynamicTestUIProps> = ({
         }
       );
 
+      setGenerationProgress('Generating custom test interface...');
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
         console.error('API Error:', response.status, errorData);
         throw new Error(errorData.detail || `HTTP ${response.status}: Failed to generate test UI`);
       }
 
+      setGenerationProgress('Compiling component...');
+
       const data = await response.json();
       console.log('=== GENERATED COMPONENT CODE ===');
       console.log(data.componentCode);
       console.log('=== END COMPONENT CODE ===');
       console.log('Component code length:', data.componentCode?.length);
+
+      setGenerationProgress('Loading interface...');
       setComponentCode(data.componentCode);
     } catch (err) {
       console.error('Error generating test UI:', err);
@@ -91,6 +101,9 @@ export const DynamicTestUI: React.FC<DynamicTestUIProps> = ({
     try {
       console.log('Attempting to create component function...');
 
+      // Escape backticks in component code to prevent template literal conflicts
+      const escapedCode = componentCode.replace(/`/g, '\\`').replace(/\$/g, '\\$');
+
       // Create a safe execution context with required dependencies
       const componentFunction = new Function(
         'React',
@@ -100,7 +113,7 @@ export const DynamicTestUI: React.FC<DynamicTestUIProps> = ({
         'apiUrl',
         'apiKey',
         `
-        ${componentCode}
+        ${escapedCode}
 
         // Return the component (look for export or default export)
         if (typeof CustomAPITest !== 'undefined') {
@@ -108,7 +121,7 @@ export const DynamicTestUI: React.FC<DynamicTestUIProps> = ({
         }
 
         // Fallback: try to find any component definition
-        const match = \`${componentCode}\`.match(/(?:export\\s+)?(?:const|function)\\s+(\\w+)/);
+        const match = componentCode.match(/(?:export\\s+)?(?:const|function)\\s+(\\w+)/);
         if (match && typeof eval(match[1]) !== 'undefined') {
           return eval(match[1]);
         }
@@ -140,9 +153,15 @@ export const DynamicTestUI: React.FC<DynamicTestUIProps> = ({
   if (loading) {
     return (
       <Card className="p-8">
-        <div className="flex items-center justify-center space-x-3 text-slate-400">
-          <Loader2 className="w-5 h-5 animate-spin" />
-          <span>Generating custom test interface...</span>
+        <div className="space-y-4">
+          <div className="flex items-center justify-center space-x-3 text-slate-400">
+            <Loader2 className="w-5 h-5 animate-spin" />
+            <span className="font-medium">Generating custom test interface...</span>
+          </div>
+          <div className="text-center">
+            <p className="text-sm text-slate-500">{generationProgress}</p>
+            <p className="text-xs text-slate-600 mt-2">This may take 10-30 seconds...</p>
+          </div>
         </div>
       </Card>
     );
