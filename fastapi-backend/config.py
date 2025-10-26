@@ -40,6 +40,12 @@ class Settings(BaseSettings):
     sentry_dsn: str = ""
     environment: str = "production"
 
+    # Stripe
+    stripe_secret_key: str = ""
+    stripe_webhook_secret: str = ""
+    stripe_pro_price_id: str = ""
+    stripe_enterprise_price_id: str = ""
+
     class Config:
         env_file = ".env"
         case_sensitive = False
