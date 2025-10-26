@@ -215,7 +215,7 @@ export const apiService = {
 
   getRateLimitStatus: async (userId: string) => {
     const headers = await getAuthHeaders();
-    const response = await fetch(`${FASTAPI_BACKEND_URL}/rate-limit-status/${userId}`, {
+    const response = await fetch(`${FASTAPI_BACKEND_URL}/api/rate-limit-status/${userId}`, {
       method: 'GET',
       headers,
     });
