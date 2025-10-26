@@ -325,6 +325,10 @@ Analyze the FastAPI code and generate a React component that creates a PERFECT t
 
 CRITICAL REQUIREMENTS:
 1. Parse the code to understand ALL endpoints, parameters, and requirements
+   - Look for @router.post(), @router.get(), etc. decorators to find endpoint paths
+   - Check function signatures for path parameters like {width}, {height}
+   - Identify whether parameters are in the path, query string, or body
+   - For file uploads with path parameters, construct URLs like: `${apiUrl}/endpoint/{param1}/{param2}`
 2. Create appropriate input controls for each parameter type:
    - File uploads: <input type="file" accept="..." />
    - Text/numbers: <input type="text" /> or <input type="number" />
