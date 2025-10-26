@@ -245,8 +245,8 @@ export const AIAssistant = () => {
           <motion.div
             initial={{ x: 400, opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
-            exit={{ x: 400, opacity: 0 }}
-            className="fixed right-0 top-0 h-full w-96 bg-white dark:bg-gray-900 shadow-2xl z-[60] flex flex-col border-l border-gray-200 dark:border-gray-800"
+            exit={{ x: 475, opacity: 0 }}
+            className="fixed right-0 top-0 h-full w-[475px] bg-white dark:bg-gray-900 shadow-2xl z-[60] flex flex-col border-l border-gray-200 dark:border-gray-800"
           >
             <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-800 bg-gradient-to-r from-blue-600 to-purple-600">
               <div className="flex items-center gap-2 text-white">
