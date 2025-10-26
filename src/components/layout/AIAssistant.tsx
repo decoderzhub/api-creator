@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MessageSquare, X, Send, Sparkles, Image, Music, Code, Globe, Key, Loader2 } from 'lucide-react';
-import { Button } from '../ui/Button';
+import { Button } from '../ui/button';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 interface Message {
   id: string;
@@ -246,16 +247,16 @@ export const AIAssistant = () => {
             initial={{ x: 400, opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
             exit={{ x: 475, opacity: 0 }}
-            className="fixed right-0 top-0 h-full w-[475px] bg-white dark:bg-gray-900 shadow-2xl z-[60] flex flex-col border-l border-gray-200 dark:border-gray-800"
+            className="fixed right-0 top-0 h-full w-[475px] bg-card shadow-2xl z-[60] flex flex-col border-l border-border"
           >
-            <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-800 bg-gradient-to-r from-blue-600 to-purple-600">
-              <div className="flex items-center gap-2 text-white">
+            <div className="flex items-center justify-between p-4 border-b border-border bg-primary">
+              <div className="flex items-center gap-2 text-primary-foreground">
                 <Sparkles className="w-5 h-5" />
                 <h3 className="font-semibold">AI Assistant</h3>
               </div>
               <button
                 onClick={() => setIsOpen(false)}
-                className="p-1 rounded-lg hover:bg-white/10 transition-colors text-white"
+                className="p-1 rounded-lg hover:bg-primary-foreground/10 transition-colors text-primary-foreground"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -270,24 +271,93 @@ export const AIAssistant = () => {
                   <div
                     className={`max-w-[80%] rounded-lg p-3 ${
                       message.role === 'user'
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100'
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-muted text-foreground'
                     }`}
                   >
                     {message.role === 'user' ? (
                       <p className="text-sm whitespace-pre-wrap">{message.content}</p>
                     ) : (
-                      <div className="prose prose-sm max-w-none dark:prose-invert prose-p:my-3 prose-ul:my-3 prose-ol:my-3 prose-li:my-1 prose-headings:font-bold prose-headings:my-3 prose-strong:font-bold prose-strong:text-gray-900 dark:prose-strong:text-gray-100">
+                      <div className="text-sm">
                         <ReactMarkdown
+                          remarkPlugins={[remarkGfm]}
                           components={{
-                            p: ({ children }) => <p className="leading-relaxed mb-3 last:mb-0">{children}</p>,
-                            ul: ({ children }) => <ul className="space-y-2 my-3">{children}</ul>,
-                            ol: ({ children }) => <ol className="space-y-2 my-3">{children}</ol>,
-                            li: ({ children }) => <li className="leading-relaxed">{children}</li>,
-                            strong: ({ children }) => <strong className="font-bold text-gray-900 dark:text-white">{children}</strong>,
-                            h1: ({ children }) => <h1 className="text-lg font-bold mb-3 mt-4 first:mt-0">{children}</h1>,
-                            h2: ({ children }) => <h2 className="text-base font-bold mb-2 mt-3 first:mt-0">{children}</h2>,
-                            h3: ({ children }) => <h3 className="text-sm font-bold mb-2 mt-3 first:mt-0">{children}</h3>,
+                            p: ({ children }) => (
+                              <p className="leading-relaxed mb-3 last:mb-0 text-foreground">
+                                {children}
+                              </p>
+                            ),
+                            ul: ({ children }) => (
+                              <ul className="list-disc list-inside space-y-1.5 my-3 ml-2">
+                                {children}
+                              </ul>
+                            ),
+                            ol: ({ children }) => (
+                              <ol className="list-decimal list-inside space-y-1.5 my-3 ml-2">
+                                {children}
+                              </ol>
+                            ),
+                            li: ({ children }) => (
+                              <li className="leading-relaxed text-foreground ml-1">
+                                {children}
+                              </li>
+                            ),
+                            strong: ({ children }) => (
+                              <strong className="font-bold text-foreground">
+                                {children}
+                              </strong>
+                            ),
+                            em: ({ children }) => (
+                              <em className="italic text-muted-foreground">
+                                {children}
+                              </em>
+                            ),
+                            h1: ({ children }) => (
+                              <h1 className="text-lg font-bold mb-3 mt-4 first:mt-0 text-foreground">
+                                {children}
+                              </h1>
+                            ),
+                            h2: ({ children }) => (
+                              <h2 className="text-base font-bold mb-2 mt-3 first:mt-0 text-foreground">
+                                {children}
+                              </h2>
+                            ),
+                            h3: ({ children }) => (
+                              <h3 className="text-sm font-bold mb-2 mt-3 first:mt-0 text-foreground">
+                                {children}
+                              </h3>
+                            ),
+                            code: ({ inline, children }) => (
+                              inline ? (
+                                <code className="px-1.5 py-0.5 rounded bg-accent text-foreground font-mono text-xs">
+                                  {children}
+                                </code>
+                              ) : (
+                                <code className="block p-3 rounded-lg bg-accent text-foreground font-mono text-xs overflow-x-auto my-2">
+                                  {children}
+                                </code>
+                              )
+                            ),
+                            pre: ({ children }) => (
+                              <pre className="my-3 overflow-x-auto">
+                                {children}
+                              </pre>
+                            ),
+                            blockquote: ({ children }) => (
+                              <blockquote className="border-l-4 border-primary pl-4 italic my-3 text-muted-foreground">
+                                {children}
+                              </blockquote>
+                            ),
+                            a: ({ href, children }) => (
+                              <a
+                                href={href}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-primary hover:underline"
+                              >
+                                {children}
+                              </a>
+                            ),
                           }}
                         >
                           {message.content}
@@ -300,8 +370,8 @@ export const AIAssistant = () => {
 
               {isLoading && (
                 <div className="flex justify-start">
-                  <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-3">
-                    <Loader2 className="w-5 h-5 text-blue-600 animate-spin" />
+                  <div className="bg-muted rounded-lg p-3">
+                    <Loader2 className="w-5 h-5 text-primary animate-spin" />
                   </div>
                 </div>
               )}
@@ -309,7 +379,7 @@ export const AIAssistant = () => {
               <div ref={messagesEndRef} />
 
               <div className="space-y-2">
-                <p className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                   Example Prompts
                 </p>
                 {examplePrompts.map((example, idx) => {
@@ -318,22 +388,22 @@ export const AIAssistant = () => {
                     <button
                       key={idx}
                       onClick={() => handleExampleClick(example.prompt)}
-                      className="w-full text-left p-3 bg-gradient-to-br from-gray-50 to-blue-50 dark:from-gray-800 dark:to-blue-950/30 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-blue-400 dark:hover:border-blue-600 transition-all group"
+                      className="w-full text-left p-3 bg-accent rounded-lg border border-border hover:border-primary transition-all group"
                     >
                       <div className="flex items-start gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center flex-shrink-0">
-                          <Icon className="w-4 h-4 text-white" />
+                        <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center flex-shrink-0">
+                          <Icon className="w-4 h-4 text-primary-foreground" />
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
-                            <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                            <h4 className="text-sm font-semibold text-foreground">
                               {example.title}
                             </h4>
-                            <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400">
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
                               {example.category}
                             </span>
                           </div>
-                          <p className="text-xs text-gray-600 dark:text-gray-400 line-clamp-2 group-hover:text-gray-900 dark:group-hover:text-gray-200">
+                          <p className="text-xs text-muted-foreground line-clamp-2 group-hover:text-foreground">
                             {example.prompt}
                           </p>
                         </div>
@@ -344,7 +414,7 @@ export const AIAssistant = () => {
               </div>
             </div>
 
-            <div className="p-4 border-t border-gray-200 dark:border-gray-800">
+            <div className="p-4 border-t border-border">
               <div className="flex gap-2">
                 <input
                   type="text"
@@ -353,7 +423,7 @@ export const AIAssistant = () => {
                   onKeyPress={(e) => e.key === 'Enter' && !isLoading && handleSend()}
                   placeholder="Ask about API integrations..."
                   disabled={isLoading}
-                  className="flex-1 px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                  className="flex-1 px-3 py-2 rounded-lg border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
                 />
                 <Button onClick={handleSend} size="sm" disabled={isLoading}>
                   {isLoading ? (
@@ -363,7 +433,7 @@ export const AIAssistant = () => {
                   )}
                 </Button>
               </div>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+              <p className="text-xs text-muted-foreground mt-2">
                 💡 Ask me how to use any feature on the platform!
               </p>
             </div>
