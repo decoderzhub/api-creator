@@ -5,7 +5,6 @@ API routes for billing and Stripe payment processing.
 from fastapi import APIRouter, Depends, HTTPException, status, Header, Request
 from pydantic import BaseModel, Field
 from typing import Optional, Literal
-import os
 
 import stripe
 from supabase import create_client
@@ -13,7 +12,7 @@ from config import get_settings
 from logger import logger
 
 settings = get_settings()
-stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
+stripe.api_key = settings.stripe_secret_key
 
 router = APIRouter(prefix="/billing", tags=["billing"])
 
@@ -162,7 +161,7 @@ async def stripe_webhook(request: Request):
     subscription and payment status in sync.
     """
 
-    webhook_secret = os.getenv("STRIPE_WEBHOOK_SECRET")
+    webhook_secret = settings.stripe_webhook_secret
     if not webhook_secret:
         logger.error("STRIPE_WEBHOOK_SECRET not configured")
         raise HTTPException(
@@ -286,8 +285,8 @@ async def sync_customer_subscription(customer_id: str, supabase):
 
         # Determine plan tier based on price ID and update user's plan
         plan = "free"
-        pro_price_id = os.getenv("STRIPE_PRO_PRICE_ID")
-        enterprise_price_id = os.getenv("STRIPE_ENTERPRISE_PRICE_ID")
+        pro_price_id = settings.stripe_pro_price_id
+        enterprise_price_id = settings.stripe_enterprise_price_id
 
         if subscription.status == "active":
             if price_id == pro_price_id:
