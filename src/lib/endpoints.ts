@@ -2,10 +2,11 @@ export const API_BASE_URL = import.meta.env.VITE_FASTAPI_GATEWAY_URL || import.m
 
 export interface EndpointParameter {
   name: string;
-  type: 'path' | 'query' | 'body';
+  type: 'path' | 'query' | 'body' | 'file';
   required: boolean;
   defaultValue?: string;
   description?: string;
+  fileType?: string;
 }
 
 export interface ParsedEndpoint {
@@ -14,6 +15,8 @@ export interface ParsedEndpoint {
   summary?: string;
   description?: string;
   parameters: EndpointParameter[];
+  requestType?: 'json' | 'multipart' | 'query';
+  docstring?: string;
 }
 
 export function parseEndpointsFromCode(code: string): ParsedEndpoint[] {
@@ -109,8 +112,19 @@ export function parseEndpointsFromCode(code: string): ParsedEndpoint[] {
               // Check if it's already added as path param
               if (parameters.some(p => p.name === paramName)) return;
 
+              // Detect File parameters (UploadFile)
+              if (param.includes('UploadFile') || param.includes('File(')) {
+                const descriptionMatch = param.match(/description=["']([^"']+)["']/);
+                parameters.push({
+                  name: paramName,
+                  type: 'file',
+                  required: param.includes('File(...)') || !param.includes('='),
+                  description: descriptionMatch ? descriptionMatch[1] : 'File upload',
+                  fileType: 'any'
+                });
+              }
               // Detect Query parameters
-              if (param.includes('Query(')) {
+              else if (param.includes('Query(')) {
                 const hasDefault = param.includes('default=') || param.includes('=');
                 const descriptionMatch = param.match(/description=["']([^"']+)["']/);
                 parameters.push({
@@ -143,12 +157,43 @@ export function parseEndpointsFromCode(code: string): ParsedEndpoint[] {
         }
       }
 
+      // Determine request type
+      const hasFiles = parameters.some(p => p.type === 'file');
+      const hasBody = parameters.some(p => p.type === 'body');
+
+      let requestType: 'json' | 'multipart' | 'query' = 'query';
+      if (hasFiles) {
+        requestType = 'multipart';
+      } else if (hasBody) {
+        requestType = 'json';
+      }
+
+      // Extract docstring if available
+      let docstring = '';
+      for (let j = i + 1; j < Math.min(i + 40, lines.length); j++) {
+        const docLine = lines[j].trim();
+        if (docLine.includes('"""')) {
+          let docStart = j;
+          let docEnd = j;
+          for (let k = j + 1; k < lines.length; k++) {
+            if (lines[k].includes('"""')) {
+              docEnd = k;
+              break;
+            }
+          }
+          docstring = lines.slice(docStart, docEnd + 1).join('\n');
+          break;
+        }
+      }
+
       endpoints.push({
         method,
         path,
         summary,
         description,
-        parameters
+        parameters,
+        requestType,
+        docstring
       });
     }
   }
@@ -169,6 +214,11 @@ function getExampleValue(paramName: string): string {
   if (lowerName === 'name') return 'example';
   if (lowerName === 'email') return 'user@example.com';
   if (lowerName === 'status') return 'active';
+  if (lowerName.includes('width')) return '800';
+  if (lowerName.includes('height')) return '600';
+  if (lowerName.includes('size')) return '1024';
+  if (lowerName.includes('format')) return 'jpg';
+  if (lowerName.includes('quality')) return '90';
 
   // Default fallback
   return 'value';
@@ -184,25 +234,40 @@ export function formatCurlExample(baseUrl: string, endpoint: ParsedEndpoint, api
     url = url.replace(`{${param.name}}`, exampleValue);
   });
 
-  // Add query parameters with example values
+  // Separate parameter types
   const queryParams = endpoint.parameters.filter(p => p.type === 'query');
-  if (queryParams.length > 0) {
+  const fileParams = endpoint.parameters.filter(p => p.type === 'file');
+  const bodyParams = endpoint.parameters.filter(p => p.type === 'body');
+
+  // Build curl command
+  let curlCmd = `curl -X ${endpoint.method} "${url}`;
+
+  // Add query params to URL if present and no files
+  if (queryParams.length > 0 && fileParams.length === 0) {
     const queryString = queryParams.map(param => {
       const exampleValue = getExampleValue(param.name);
       return `${param.name}=${exampleValue}`;
     }).join('&');
-    url += `?${queryString}`;
+    curlCmd += `?${queryString}`;
   }
 
-  // Build curl command
-  let curlCmd = `curl -X ${endpoint.method} "${url}" \\\n  -H "Authorization: Bearer ${apiKey}"`;
+  curlCmd += `" \\\n  -H "Authorization: Bearer ${apiKey}"`;
 
-  // Add body for POST/PUT/PATCH
-  const bodyParams = endpoint.parameters.filter(p => p.type === 'body');
-  if (['POST', 'PUT', 'PATCH'].includes(endpoint.method) && bodyParams.length > 0) {
-    curlCmd += ` \\\n  -H "Content-Type: application/json" \\\n  -d '{"key": "value"}'`;
-  } else if (['POST', 'PUT', 'PATCH'].includes(endpoint.method) && queryParams.length === 0 && pathParams.length === 0) {
-    // Fallback for POST/PUT/PATCH without detected params
+  // Handle file uploads (multipart/form-data)
+  if (fileParams.length > 0) {
+    fileParams.forEach(param => {
+      const fileName = param.name === 'file' || param.name === 'image' ? 'image.jpg' : `${param.name}.jpg`;
+      curlCmd += ` \\\n  -F "${param.name}=@/path/to/${fileName}"`;
+    });
+
+    // Add query params as form fields for file uploads
+    queryParams.forEach(param => {
+      const exampleValue = getExampleValue(param.name);
+      curlCmd += ` \\\n  -F "${param.name}=${exampleValue}"`;
+    });
+  }
+  // Handle JSON body
+  else if (bodyParams.length > 0 || (['POST', 'PUT', 'PATCH'].includes(endpoint.method) && queryParams.length === 0)) {
     curlCmd += ` \\\n  -H "Content-Type: application/json" \\\n  -d '{"key": "value"}'`;
   }
 

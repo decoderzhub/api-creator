@@ -21,6 +21,16 @@ class GenerateAPIRequest(BaseModel):
     apiName: str
 
 
+class ClarificationRequest(BaseModel):
+    prompt: str
+    apiName: str
+
+
+class DocumentationRequest(BaseModel):
+    code: str
+    apiName: str
+
+
 @router.post("/generate-api-code")
 async def generate_api_code(request: GenerateAPIRequest, user_id: str = Depends(verify_token)):
     """Generate FastAPI code from natural language description using Anthropic Claude"""
@@ -37,7 +47,12 @@ Requirements:
 2. Include error handling where appropriate
 3. Use Pydantic models for request/response validation
 4. Include proper HTTP status codes and error responses
-5. Add docstrings and comments
+5. Add comprehensive docstrings explaining:
+   - What the endpoint does
+   - Required parameters and their types
+   - Expected request format (JSON, multipart/form-data, query params)
+   - Example curl command with proper headers
+   - Response format
 6. Follow REST best practices
 7. Return ONLY the Python code, no explanations
 8. CRITICAL: Only use these available libraries:
@@ -50,16 +65,55 @@ Requirements:
    - random
    - uuid
    - os (for environment variables)
-   DO NOT import any other external libraries like aiohttp, requests, passlib, bcrypt, etc.
+   - io, base64 (for file handling)
+   DO NOT import any other external libraries like aiohttp, requests, passlib, bcrypt, PIL, opencv, etc.
 9. For any data storage, use simple in-memory structures (dicts, lists) as this is a demo
 10. Do NOT include authentication or rate limiting - keep it simple
-11. SPECIAL: For sound/audio APIs, integrate Freesound.org API:
-    - Use httpx to call Freesound API: https://freesound.org/apiv2/search/text/
-    - Get API key from environment: FREESOUND_API_KEY = os.getenv("FREESOUND_API_KEY", "")
-    - Add header: "Authorization": f"Token {FREESOUND_API_KEY}"
-    - Search with query parameter: ?query=ocean+waves&fields=id,name,description,previews,duration
-    - Return results with preview URLs that can be played in browser
-    - Include preview_hq_mp3 URL from previews object for playback
+
+11. FILE UPLOADS - CRITICAL GUIDELINES:
+    - Use FastAPI's File and UploadFile from fastapi
+    - Example: @app.post("/upload")\n           async def upload(file: UploadFile = File(...)):
+    - Read file content: content = await file.read()
+    - For images: Use base64 encoding for simple processing
+    - Always validate file type: file.content_type
+    - Add docstring with curl example: curl -X POST -F "file=@image.jpg" -F "param=value"
+
+12. SPECIAL INTEGRATIONS:
+    - For sound/audio APIs, integrate Freesound.org API:
+      * Use httpx to call: https://freesound.org/apiv2/search/text/
+      * Get API key: FREESOUND_API_KEY = os.getenv("FREESOUND_API_KEY", "")
+      * Add header: "Authorization": f"Token {FREESOUND_API_KEY}"
+      * Search params: ?query=ocean+waves&fields=id,name,description,previews,duration
+      * Return preview_hq_mp3 URL from previews object for playback
+
+    - For image APIs WITHOUT external libraries:
+      * Accept file uploads using UploadFile
+      * Use base64 encoding for simple transformations
+      * Return base64-encoded results or simple metadata
+      * Example: Validate format, return file info, basic metadata
+      * DO NOT attempt actual image processing without PIL
+
+13. DOCSTRING FORMAT (include in every endpoint):
+    \"\"\"
+    Brief description of what this endpoint does.
+
+    Parameters:
+    - param1 (type): Description
+    - file (file): Image/audio/document file
+
+    Request Format: multipart/form-data OR application/json
+
+    Example:
+    ```bash
+    curl -X POST "http://localhost:8000/endpoint" \\
+      -H "Authorization: Bearer {api_key}" \\
+      -F "file=@/path/to/file.jpg" \\
+      -F "param=value"
+    ```
+
+    Response:
+    {\"status\": \"success\", \"result\": {...}}
+    \"\"\"
 
 The code should be a complete, self-contained FastAPI application that can be executed with only the standard libraries listed above."""
 
@@ -89,3 +143,161 @@ Generate the complete FastAPI code for this API."""
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to generate API code: {str(e)}")
+
+
+@router.post("/get-clarifications")
+async def get_clarifications(request: ClarificationRequest, user_id: str = Depends(verify_token)):
+    """Ask clarifying questions to generate better API code"""
+    try:
+        if not settings.anthropic_api_key:
+            raise HTTPException(status_code=500, detail="Anthropic API key not configured")
+
+        client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+
+        system_prompt = """You are an expert API designer helping users create robust, production-ready APIs.
+
+Analyze the user's API request and generate 3-5 clarifying questions that would help you create a better API.
+
+Focus on:
+1. **Data handling**: What format? File uploads? JSON? Query params?
+2. **Input/Output**: What are the expected inputs and outputs?
+3. **Business logic**: Any specific processing requirements?
+4. **Error cases**: What errors should be handled?
+5. **Integration**: Any third-party APIs needed?
+
+For file uploads (images, audio, documents):
+- Ask about accepted file types
+- Ask about file size limits
+- Ask about processing requirements (resize, convert, etc.)
+- Ask if they need to store or just process
+
+Return ONLY a JSON object with this structure:
+{
+  "needs_clarification": true/false,
+  "questions": [
+    {
+      "question": "Question text",
+      "options": ["Option 1", "Option 2"],
+      "type": "choice" or "text"
+    }
+  ],
+  "suggestions": ["Helpful suggestion 1", "Helpful suggestion 2"]
+}
+
+If the description is already detailed enough, set needs_clarification to false."""
+
+        user_prompt = f"""API Name: {request.apiName}
+
+Description: {request.prompt}
+
+Analyze this and determine if clarifying questions would help create a better API."""
+
+        message = client.messages.create(
+            model="claude-3-5-sonnet-20241022",
+            max_tokens=1500,
+            messages=[
+                {"role": "user", "content": f"{system_prompt}\n\n{user_prompt}"}
+            ]
+        )
+
+        response_text = message.content[0].text.strip()
+
+        import json
+        response_text = response_text.replace("```json", "").replace("```", "").strip()
+        clarifications = json.loads(response_text)
+
+        return clarifications
+
+    except json.JSONDecodeError as e:
+        return {
+            "needs_clarification": False,
+            "questions": [],
+            "suggestions": ["Provide more details about your API requirements"]
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get clarifications: {str(e)}")
+
+
+@router.post("/generate-documentation")
+async def generate_documentation(request: DocumentationRequest, user_id: str = Depends(verify_token)):
+    """Generate comprehensive API documentation with proper examples"""
+    try:
+        if not settings.anthropic_api_key:
+            raise HTTPException(status_code=500, detail="Anthropic API key not configured")
+
+        client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+
+        system_prompt = """You are a technical writer creating comprehensive API documentation.
+
+Analyze the FastAPI code and generate detailed documentation in JSON format.
+
+For each endpoint, provide:
+1. **Accurate curl examples** with proper headers:
+   - For file uploads: Use -F "file=@/path/to/file.jpg" (multipart/form-data)
+   - For JSON: Use -H "Content-Type: application/json" -d '{"key": "value"}'
+   - Always include: -H "Authorization: Bearer {api_key}"
+
+2. **Request examples** in multiple languages (curl, JavaScript, Python)
+
+3. **Response examples** with actual expected output
+
+4. **Parameter details** with types, requirements, and examples
+
+Return ONLY a JSON object with this structure:
+{
+  "endpoints": [
+    {
+      "method": "POST",
+      "path": "/resize",
+      "description": "Resize an uploaded image",
+      "request_type": "multipart" or "json" or "query",
+      "parameters": [
+        {
+          "name": "file",
+          "type": "file",
+          "location": "form" or "query" or "body" or "path",
+          "required": true,
+          "description": "Image file to resize",
+          "example": "@/path/to/image.jpg"
+        }
+      ],
+      "examples": {
+        "curl": "curl -X POST https://api.example.com/resize -F \"file=@image.jpg\" -F \"width=800\" -H \"Authorization: Bearer API_KEY\"",
+        "javascript": "const formData = new FormData();\nformData.append('file', fileInput.files[0]);\nfetch('https://api.example.com/resize', {method: 'POST', body: formData, headers: {'Authorization': 'Bearer API_KEY'}});",
+        "python": "import requests\nfiles = {'file': open('image.jpg', 'rb')}\nrequests.post('https://api.example.com/resize', files=files, headers={'Authorization': 'Bearer API_KEY'})"
+      },
+      "response_example": {
+        "status": 200,
+        "body": {"image_url": "https://...", "width": 800, "height": 600}
+      }
+    }
+  ]
+}"""
+
+        user_prompt = f"""API Name: {request.apiName}
+
+Code:
+{request.code}
+
+Generate comprehensive documentation with accurate curl examples and proper headers."""
+
+        message = client.messages.create(
+            model="claude-3-5-sonnet-20241022",
+            max_tokens=2500,
+            messages=[
+                {"role": "user", "content": f"{system_prompt}\n\n{user_prompt}"}
+            ]
+        )
+
+        response_text = message.content[0].text.strip()
+
+        import json
+        response_text = response_text.replace("```json", "").replace("```", "").strip()
+        documentation = json.loads(response_text)
+
+        return documentation
+
+    except json.JSONDecodeError as e:
+        return {"endpoints": []}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to generate documentation: {str(e)}")
