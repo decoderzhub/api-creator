@@ -328,13 +328,24 @@ CRITICAL REQUIREMENTS:
    - Look for @router.post(), @router.get(), etc. decorators to find endpoint paths
    - Check function signatures for path parameters like {width}, {height}
    - Identify whether parameters are in the path, query string, or body
-   - For file uploads with path parameters, construct URLs like: `${apiUrl}/endpoint/{param1}/{param2}`
-2. Create appropriate input controls for each parameter type:
+   - For file uploads with path parameters, construct URLs like: `${apiUrl}endpoint/${param1}/${param2}` (use actual values, not placeholders)
+   - IMPORTANT: The apiUrl provided ends with a trailing slash, so build the full URL by appending the endpoint path
+   - Example: If apiUrl = "https://api.com/abc123/" and endpoint is "/resize/{width}/{height}", use: `${apiUrl}resize/${width}/${height}`
+   - Another example: If @router.post("/process/{id}"), use: `${apiUrl}process/${id}`
+
+2. Initialize ALL numeric state with actual numbers (not empty strings):
+   - WRONG: const [width, setWidth] = useState('');
+   - RIGHT: const [width, setWidth] = useState(100);
+   - Always provide sensible defaults for all parameters
+
+3. Create appropriate input controls for each parameter type:
    - File uploads: <input type="file" accept="..." />
-   - Text/numbers: <input type="text" /> or <input type="number" />
+   - Numbers: <input type="number" value={state} onChange={(e) => setState(parseInt(e.target.value) || 0)} />
+   - Text: <input type="text" />
    - Booleans: <input type="checkbox" />
    - Enums/choices: <select> dropdown
    - JSON objects: <textarea> with validation
+   - ALWAYS parse number inputs with parseInt() or parseFloat() and provide fallback values
 
 3. For FILE UPLOADS:
    - Add proper file input with drag-and-drop
@@ -351,6 +362,8 @@ CRITICAL REQUIREMENTS:
 
 5. Visual enhancements:
    - Use Tailwind CSS classes for styling
+   - CRITICAL: ALL input fields must have dark text: className="... text-gray-900"
+   - CRITICAL: All text inputs and number inputs must have: className="w-full px-3 py-2 border rounded text-gray-900"
    - Add icons from lucide-react (available as LucideIcons.IconName)
    - Show request/response tabs
    - Copy button for results
