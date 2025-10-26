@@ -5,6 +5,7 @@ import { Button } from '../ui/Button';
 import * as LucideIcons from 'lucide-react';
 import React from 'react';
 import { API_BASE_URL } from '../../lib/endpoints';
+import { supabase } from '../../lib/supabase';
 
 interface DynamicTestUIProps {
   apiId: string;
@@ -33,13 +34,18 @@ export const DynamicTestUI: React.FC<DynamicTestUIProps> = ({
 
       console.log('Fetching test UI from:', `${API_BASE_URL}/generate-test-ui`);
 
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('Not authenticated');
+      }
+
       const response = await fetch(
         `${API_BASE_URL}/generate-test-ui`,
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
+            Authorization: `Bearer ${session.access_token}`,
           },
           body: JSON.stringify({
             code,
