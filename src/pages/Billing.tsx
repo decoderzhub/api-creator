@@ -99,7 +99,9 @@ export const Billing = () => {
     }
 
     if (!session) {
+      console.log('No session found - user needs to log in');
       addToast('Please log in to upgrade', 'error');
+      alert('Please log in to upgrade your plan');
       return;
     }
 
