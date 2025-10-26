@@ -6,6 +6,7 @@ import * as LucideIcons from 'lucide-react';
 import React from 'react';
 import { API_BASE_URL } from '../../lib/endpoints';
 import { supabase } from '../../lib/supabase';
+import * as Babel from '@babel/standalone';
 
 interface DynamicTestUIProps {
   apiId: string;
@@ -100,11 +101,20 @@ export const DynamicTestUI: React.FC<DynamicTestUIProps> = ({
 
     try {
       console.log('Attempting to create component function...');
+      console.log('Transforming JSX with Babel...');
+
+      // Transform JSX to plain JavaScript using Babel
+      const transformed = Babel.transform(componentCode, {
+        presets: ['react'],
+        filename: 'component.jsx'
+      });
+
+      console.log('JSX transformed successfully');
 
       // Create a wrapper that provides the necessary context
       const wrappedCode = `
         (function(React, useState, useEffect, LucideIcons, apiUrl, apiKey) {
-          ${componentCode}
+          ${transformed.code}
 
           return CustomAPITest;
         })
