@@ -193,8 +193,8 @@ async def reload_single_api(api_id: str, authorization: str = Header(None)):
         raise HTTPException(status_code=404, detail="API not found")
 
 
-@app.api_route("/{api_id}", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
-@app.api_route("/{api_id}/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
+@app.api_route("/run/{api_id}", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
+@app.api_route("/run/{api_id}/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
 async def proxy_to_user_api(
     api_id: str,
     request: Request,
@@ -203,7 +203,7 @@ async def proxy_to_user_api(
 ):
     """
     Route requests to user-generated APIs
-    Format: /{api_id} or /{api_id}/{endpoint_path}
+    Format: /run/{api_id} or /run/{api_id}/{endpoint_path}
     """
     start_time = datetime.utcnow()
     request_id = request.state.request_id if hasattr(request.state, 'request_id') else "unknown"
