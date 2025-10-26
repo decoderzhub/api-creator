@@ -18,6 +18,7 @@ import { APICard } from '../components/dashboard/APICard';
 import { SavedAPICard } from '../components/dashboard/SavedAPICard';
 import { PublishModal } from '../components/dashboard/PublishModal';
 import { CodeModal } from '../components/dashboard/CodeModal';
+import { DynamicTestUI } from '../components/dashboard/DynamicTestUI';
 import { parseEndpointsFromCode, formatCurlExample, ParsedEndpoint } from '../lib/endpoints';
 
 interface SavedAPI {
@@ -882,6 +883,26 @@ export const Dashboard = () => {
                                     </div>
                                   );
                                 })}
+
+                                {/* AI-Generated Dynamic Test UI */}
+                                <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                                  <div className="flex items-center gap-2 mb-3">
+                                    <Zap className="w-4 h-4 text-purple-500" />
+                                    <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                                      Interactive API Tester
+                                    </h4>
+                                    <span className="text-xs px-2 py-0.5 bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400 rounded-full">
+                                      AI-Generated
+                                    </span>
+                                  </div>
+                                  <DynamicTestUI
+                                    apiId={api.id}
+                                    apiName={api.name}
+                                    apiUrl={api.endpoint_url}
+                                    apiKey={api.api_key || 'your-api-key'}
+                                    code={api.code_snapshot}
+                                  />
+                                </div>
                               </motion.div>
                             )}
                           </div>

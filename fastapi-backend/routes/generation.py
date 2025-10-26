@@ -31,6 +31,13 @@ class DocumentationRequest(BaseModel):
     apiName: str
 
 
+class TestUIRequest(BaseModel):
+    code: str
+    apiName: str
+    apiId: str
+    endpointUrl: str
+
+
 @router.post("/generate-api-code")
 async def generate_api_code(request: GenerateAPIRequest, user_id: str = Depends(verify_token)):
     """Generate FastAPI code from natural language description using Anthropic Claude"""
@@ -301,3 +308,110 @@ Generate comprehensive documentation with accurate curl examples and proper head
         return {"endpoints": []}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to generate documentation: {str(e)}")
+
+
+@router.post("/generate-test-ui")
+async def generate_test_ui(request: TestUIRequest, user_id: str = Depends(verify_token)):
+    """Generate custom React component for testing this specific API"""
+    try:
+        if not settings.anthropic_api_key:
+            raise HTTPException(status_code=500, detail="Anthropic API key not configured")
+
+        client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+
+        system_prompt = """You are an expert React developer creating custom API testing interfaces.
+
+Analyze the FastAPI code and generate a React component that creates a PERFECT testing UI for this specific API.
+
+CRITICAL REQUIREMENTS:
+1. Parse the code to understand ALL endpoints, parameters, and requirements
+2. Create appropriate input controls for each parameter type:
+   - File uploads: <input type="file" accept="..." />
+   - Text/numbers: <input type="text" /> or <input type="number" />
+   - Booleans: <input type="checkbox" />
+   - Enums/choices: <select> dropdown
+   - JSON objects: <textarea> with validation
+
+3. For FILE UPLOADS:
+   - Add proper file input with drag-and-drop
+   - Show file preview (images, audio player, etc.)
+   - Display file size/type validation
+   - Use FormData() for submission
+
+4. For each endpoint, create:
+   - Clear labeled form fields
+   - "Test Endpoint" button
+   - Loading state during request
+   - Beautiful response display (JSON formatter, image preview, audio player)
+   - Error handling with clear messages
+
+5. Visual enhancements:
+   - Use Tailwind CSS classes for styling
+   - Add icons from lucide-react
+   - Show request/response tabs
+   - Copy button for results
+   - Success/error toast notifications
+
+6. Code structure:
+   ```tsx
+   import { useState } from 'react';
+   import { Upload, Play, Download, Copy } from 'lucide-react';
+
+   export const CustomAPITest = ({ apiUrl, apiKey }: { apiUrl: string; apiKey: string }) => {
+     const [loading, setLoading] = useState(false);
+     const [response, setResponse] = useState(null);
+     const [error, setError] = useState('');
+
+     // State for each parameter
+     // Form inputs for parameters
+     // Submit handler with proper fetch/FormData
+     // Response display
+
+     return (
+       <div className="space-y-6">
+         {/* Endpoint tabs if multiple */}
+         {/* Parameter inputs */}
+         {/* Test button */}
+         {/* Response display */}
+       </div>
+     );
+   };
+   ```
+
+7. Return ONLY the complete React component code, no explanations.
+
+8. For IMAGE APIs: Include image preview after upload and after response
+9. For AUDIO APIs: Include audio player for testing playback
+10. For DATA APIs: Include JSON formatter and copy functionality
+
+Make it production-quality, beautiful, and intuitive."""
+
+        user_prompt = f"""API Name: {request.apiName}
+API ID: {request.apiId}
+Endpoint URL: {request.endpointUrl}
+
+FastAPI Code:
+{request.code}
+
+Generate a custom React testing component specifically designed for this API's functionality."""
+
+        message = client.messages.create(
+            model="claude-3-5-sonnet-20241022",
+            max_tokens=3000,
+            messages=[
+                {"role": "user", "content": f"{system_prompt}\\n\\n{user_prompt}"}
+            ]
+        )
+
+        component_code = message.content[0].text.strip()
+
+        # Clean up code blocks
+        component_code = component_code.replace("```tsx", "").replace("```typescript", "").replace("```jsx", "").replace("```", "").strip()
+
+        return {
+            "componentCode": component_code,
+            "language": "tsx"
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to generate test UI: {str(e)}")
