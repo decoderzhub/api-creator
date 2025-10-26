@@ -4,6 +4,7 @@ import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import * as LucideIcons from 'lucide-react';
 import React from 'react';
+import { API_BASE_URL } from '../../lib/endpoints';
 
 interface DynamicTestUIProps {
   apiId: string;
@@ -30,8 +31,10 @@ export const DynamicTestUI: React.FC<DynamicTestUIProps> = ({
       setLoading(true);
       setError('');
 
+      console.log('Fetching test UI from:', `${API_BASE_URL}/generate-test-ui`);
+
       const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/generate-test-ui`,
+        `${API_BASE_URL}/generate-test-ui`,
         {
           method: 'POST',
           headers: {
