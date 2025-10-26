@@ -430,27 +430,37 @@ Generate a custom React testing component specifically designed for this API's f
             # Extract from the component definition to the end
             component_code = component_code[component_match.start():]
 
-            # Find the last closing brace that matches the component
-            # Count braces to find where the component ends
-            brace_count = 0
-            in_component = False
-            end_index = len(component_code)
+            # Find the arrow function body opening brace (not parameter destructuring)
+            # Look for "=> {" pattern
+            arrow_match = re.search(r'=>\s*\{', component_code)
+            if arrow_match:
+                # Start counting braces from the function body
+                brace_count = 0
+                start_counting = False
+                end_index = len(component_code)
 
-            for i, char in enumerate(component_code):
-                if char == '{':
-                    brace_count += 1
-                    in_component = True
-                elif char == '}':
-                    brace_count -= 1
-                    if in_component and brace_count == 0:
-                        # Found the end of the component
-                        end_index = i + 1
-                        # Look for the semicolon after the closing brace
-                        if end_index < len(component_code) and component_code[end_index] == ';':
-                            end_index += 1
-                        break
+                for i, char in enumerate(component_code):
+                    # Start counting at the function body brace (after =>)
+                    if not start_counting and i >= arrow_match.end() - 1:
+                        start_counting = True
 
-            component_code = component_code[:end_index].strip()
+                    if start_counting:
+                        if char == '{':
+                            brace_count += 1
+                        elif char == '}':
+                            brace_count -= 1
+                            if brace_count == 0:
+                                # Found the end of the component
+                                end_index = i + 1
+                                # Look for the semicolon after the closing brace
+                                if end_index < len(component_code) and component_code[end_index] == ';':
+                                    end_index += 1
+                                break
+
+                component_code = component_code[:end_index].strip()
+            else:
+                # No arrow function pattern found, just keep as is
+                pass
 
         # Remove import statements (in case AI includes them)
         lines = component_code.split('\n')
