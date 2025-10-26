@@ -93,7 +93,7 @@ export const Billing = () => {
         ? import.meta.env.VITE_STRIPE_PRO_PRICE_ID
         : import.meta.env.VITE_STRIPE_ENTERPRISE_PRICE_ID;
 
-      if (!priceId) {
+      if (!priceId || priceId.includes('your_stripe') || priceId === 'undefined') {
         addToast('Stripe is not configured. Please contact support.', 'error');
         setLoading(false);
         return;
