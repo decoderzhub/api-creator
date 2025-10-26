@@ -33,7 +33,7 @@ export const DynamicTestUI: React.FC<DynamicTestUIProps> = ({
   const [chatHistory, setChatHistory] = useState<Array<{ role: 'user' | 'assistant'; content: string }>>([]);
   const [chatLoading, setChatLoading] = useState(false);
 
-  const fetchTestUI = useCallback(async (improvementRequest?: string) => {
+  const fetchTestUI = useCallback(async (improvementRequest?: string, previousCode?: string) => {
     try {
       setLoading(true);
       setError('');
@@ -62,7 +62,7 @@ export const DynamicTestUI: React.FC<DynamicTestUIProps> = ({
             apiId,
             endpointUrl: apiUrl,
             improvementRequest,
-            previousCode: improvementRequest ? componentCode : undefined,
+            previousCode: improvementRequest ? previousCode : undefined,
           }),
         }
       );
@@ -91,7 +91,7 @@ export const DynamicTestUI: React.FC<DynamicTestUIProps> = ({
     } finally {
       setLoading(false);
     }
-  }, [apiId, code, apiName, apiUrl, componentCode]);
+  }, [apiId, code, apiName, apiUrl]);
 
   const handleRegenerate = () => {
     setRegenerateKey(prev => prev + 1);
@@ -102,12 +102,13 @@ export const DynamicTestUI: React.FC<DynamicTestUIProps> = ({
     if (!chatMessage.trim()) return;
 
     const userMessage = chatMessage.trim();
+    const currentCode = componentCode; // Capture current code before clearing
     setChatMessage('');
     setChatHistory(prev => [...prev, { role: 'user', content: userMessage }]);
     setChatLoading(true);
 
     try {
-      await fetchTestUI(userMessage);
+      await fetchTestUI(userMessage, currentCode);
       setChatHistory(prev => [
         ...prev,
         { role: 'assistant', content: 'Test UI regenerated with your improvements!' }
