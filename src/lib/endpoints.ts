@@ -1,4 +1,4 @@
-export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8663/api';
+export const API_BASE_URL = import.meta.env.VITE_FASTAPI_GATEWAY_URL || import.meta.env.VITE_API_URL || 'http://localhost:8663/api';
 
 export interface EndpointParameter {
   name: string;
