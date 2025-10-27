@@ -75,7 +75,8 @@ Requirements:
    - uuid
    - os (for environment variables)
    - io, base64 (for file handling)
-   DO NOT import any other external libraries like aiohttp, requests, passlib, bcrypt, PIL, opencv, etc.
+   - PIL (Pillow) for image processing - AVAILABLE and RECOMMENDED
+   DO NOT import any other external libraries like aiohttp, requests, passlib, bcrypt, opencv, numpy, pandas, etc.
 9. For any data storage, use simple in-memory structures (dicts, lists) as this is a demo
 10. Do NOT include authentication or rate limiting - keep it simple
 
@@ -83,7 +84,14 @@ Requirements:
     - Use FastAPI's File and UploadFile from fastapi
     - Example: @app.post("/upload")\n           async def upload(file: UploadFile = File(...)):
     - Read file content: content = await file.read()
-    - For images: Use base64 encoding for simple processing
+    - For IMAGE PROCESSING: Use PIL (Pillow) which is available
+      * from PIL import Image
+      * from io import BytesIO
+      * image = Image.open(BytesIO(content))
+      * image = image.resize((width, height))
+      * buffer = BytesIO()
+      * image.save(buffer, format='PNG')
+      * resized_data = buffer.getvalue()
     - Always validate file type: file.content_type
     - Add docstring with curl example: curl -X POST -F "file=@image.jpg" -F "param=value"
 
@@ -95,12 +103,10 @@ Requirements:
       * Search params: ?query=ocean+waves&fields=id,name,description,previews,duration
       * Return preview_hq_mp3 URL from previews object for playback
 
-    - For image APIs WITHOUT external libraries:
-      * Accept file uploads using UploadFile
-      * Use base64 encoding for simple transformations
-      * Return base64-encoded results or simple metadata
-      * Example: Validate format, return file info, basic metadata
-      * DO NOT attempt actual image processing without PIL
+    - For image APIs: ALWAYS use PIL (Pillow) for actual image processing
+      * PIL is available and should be used for resize, crop, rotate, filter operations
+      * Return processed images as base64-encoded strings or file responses
+      * Example operations: resize, thumbnail, crop, rotate, convert formats, apply filters
 
 13. DOCSTRING FORMAT (include in every endpoint):
     \"\"\"
