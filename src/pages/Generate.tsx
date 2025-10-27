@@ -123,7 +123,7 @@ export const Generate = () => {
       const apiKey = `ak_${Math.random().toString(36).substring(2, 15)}${Math.random().toString(36).substring(2, 15)}`;
       const apiId = crypto.randomUUID();
       const fastApiGatewayUrl = import.meta.env.VITE_FASTAPI_GATEWAY_URL || 'http://localhost:8000';
-      const endpointUrl = `${fastApiGatewayUrl}/${apiId}`;
+      const endpointUrl = `${fastApiGatewayUrl}/run/${apiId}`;
 
       const { data, error } = await supabase.from('apis').insert({
         id: apiId,
