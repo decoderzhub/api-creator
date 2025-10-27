@@ -358,6 +358,10 @@ CRITICAL REQUIREMENTS:
    - Show file preview (images, audio player, etc.)
    - Display file size/type validation
    - Use FormData() for submission
+   - CRITICAL: Include Authorization header even with FormData:
+     * const formData = new FormData();
+     * formData.append('file', file);
+     * fetch(url, { method: 'POST', body: formData, headers: { 'Authorization': `Bearer ${apiKey}` } })
 
 4. For each endpoint, create:
    - Clear labeled form fields
@@ -365,6 +369,9 @@ CRITICAL REQUIREMENTS:
    - Loading state during request
    - Beautiful response display (JSON formatter, image preview, audio player)
    - Error handling with clear messages
+   - CRITICAL: ALWAYS include Authorization header in ALL fetch requests:
+     * headers: { 'Authorization': `Bearer ${apiKey}` }
+     * This is MANDATORY - requests will fail without it
 
 5. Visual enhancements:
    - Use Tailwind CSS classes for styling
@@ -385,14 +392,32 @@ CRITICAL REQUIREMENTS:
      const [response, setResponse] = useState(null);
      const [error, setError] = useState('');
 
-     // State for each parameter
-     // Form inputs for parameters
-     // Submit handler with proper fetch/FormData
-     // Response display
+     const handleSubmit = async () => {
+       setLoading(true);
+       setError('');
+       try {
+         // CRITICAL: ALWAYS include Authorization header
+         const response = await fetch(`${apiUrl}/endpoint`, {
+           method: 'POST',
+           headers: {
+             'Authorization': `Bearer ${apiKey}`,
+             'Content-Type': 'application/json'
+           },
+           body: JSON.stringify({ param: value })
+         });
+
+         const data = await response.json();
+         if (!response.ok) throw new Error(data.detail || 'Request failed');
+         setResponse(data);
+       } catch (err) {
+         setError(err.message);
+       } finally {
+         setLoading(false);
+       }
+     };
 
      return (
        <div className="space-y-6">
-         {/* Endpoint tabs if multiple */}
          {/* Parameter inputs */}
          {/* Test button */}
          {/* Response display */}
