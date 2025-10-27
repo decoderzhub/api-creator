@@ -82,7 +82,21 @@ Requirements:
 
 11. FILE UPLOADS - CRITICAL GUIDELINES:
     - Use FastAPI's File and UploadFile from fastapi
-    - Example: @app.post("/upload")\n           async def upload(file: UploadFile = File(...)):
+    - CRITICAL: When accepting files with parameters, use Form() for each parameter, NOT Pydantic models
+    - WRONG: async def upload(file: UploadFile = File(...), params: MyModel = None)
+    - RIGHT: async def upload(file: UploadFile = File(...), width: int = Form(...), height: int = Form(...))
+    - Example:
+      ```python
+      from fastapi import FastAPI, File, UploadFile, Form
+
+      @app.post("/resize")
+      async def resize_image(
+          file: UploadFile = File(...),
+          width: int = Form(...),
+          height: int = Form(...),
+          preserve_aspect_ratio: bool = Form(True)
+      ):
+      ```
     - Read file content: content = await file.read()
     - For IMAGE PROCESSING: Use PIL (Pillow) which is available
       * from PIL import Image
@@ -93,7 +107,7 @@ Requirements:
       * image.save(buffer, format='PNG')
       * resized_data = buffer.getvalue()
     - Always validate file type: file.content_type
-    - Add docstring with curl example: curl -X POST -F "file=@image.jpg" -F "param=value"
+    - Add docstring with curl example: curl -X POST -F "file=@image.jpg" -F "width=800" -F "height=600"
 
 12. SPECIAL INTEGRATIONS:
     - For sound/audio APIs, integrate Freesound.org API:
@@ -402,26 +416,13 @@ CRITICAL REQUIREMENTS:
      * formData.append('file', file);
      * fetch(url, { method: 'POST', body: formData, headers: { 'Authorization': `Bearer ${apiKey}` } })
 
-   - PATTERN 1: File + Pydantic Model (e.g., async def resize(file: UploadFile, params: ResizeRequest))
-     * Look for Pydantic model class definition (class ResizeRequest(BaseModel):)
-     * Extract all fields from the model (width, height, preserve_aspect_ratio, etc.)
-     * Create UI inputs for each field with proper defaults
-     * Build JSON object from user inputs and append as string:
-       const formData = new FormData();
-       formData.append('file', selectedFile);
-       formData.append('params', JSON.stringify({
-         width: widthValue,
-         height: heightValue,
-         preserve_aspect_ratio: preserveRatio,
-         optimize: optimizeValue
-       }));
-
-   - PATTERN 2: File + Individual Params (e.g., async def resize(file: UploadFile, width: int, height: int))
+   - File Upload Pattern (e.g., async def resize(file: UploadFile, width: int = Form(...), height: int = Form(...)))
      * Append each parameter individually to FormData:
        const formData = new FormData();
        formData.append('file', selectedFile);
        formData.append('width', width.toString());
        formData.append('height', height.toString());
+       formData.append('preserve_aspect_ratio', preserveRatio.toString());
 
 4. For each endpoint, create:
    - Clear labeled form fields
