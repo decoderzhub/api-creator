@@ -330,10 +330,14 @@ CRITICAL REQUIREMENTS:
    - Look for @router.post(), @router.get(), etc. decorators to find endpoint paths
    - Check function signatures for path parameters like {width}, {height}
    - Identify whether parameters are in the path, query string, or body
-   - For file uploads with path parameters, construct URLs like: `${apiUrl}endpoint/${param1}/${param2}` (use actual values, not placeholders)
-   - IMPORTANT: The apiUrl provided ends with a trailing slash, so build the full URL by appending the endpoint path
-   - Example: If apiUrl = "https://api.com/abc123/" and endpoint is "/resize/{width}/{height}", use: `${apiUrl}resize/${width}/${height}`
-   - Another example: If @router.post("/process/{id}"), use: `${apiUrl}process/${id}`
+   - CRITICAL URL CONSTRUCTION: The apiUrl provided does NOT have a trailing slash, so you MUST ensure proper slash handling
+   - ALWAYS ensure there is exactly ONE slash between apiUrl and the endpoint path
+   - WRONG: `${apiUrl}sounds/search/` (missing slash between apiUrl and 'sounds')
+   - RIGHT: `${apiUrl}/sounds/search/` (has slash between apiUrl and 'sounds')
+   - For path parameters, examples:
+     * If apiUrl = "https://api.com/abc123" and endpoint is "/resize/{width}/{height}", use: `${apiUrl}/resize/${width}/${height}`
+     * If @router.get("/sounds/search/"), use: `${apiUrl}/sounds/search/?query=...`
+     * If @router.get("/sounds/{sound_id}"), use: `${apiUrl}/sounds/${soundId}`
 
 2. Initialize ALL numeric state with actual numbers (not empty strings):
    - WRONG: const [width, setWidth] = useState('');
