@@ -41,14 +41,17 @@ async def suggest_prompts(request: SuggestPromptsRequest, user_id: str = Depends
 
         client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
 
-        system_prompt = """You are an expert API designer. Given an API name and partial description, suggest 3 complete, concise API descriptions that:
-1. Are exactly 5-6 words each
-2. Are production-ready and specific
-3. Describe the core functionality
+        system_prompt = """You are an expert API designer. Given an API name and partial description, suggest 3 complete, detailed API descriptions that:
+1. Are 20-40 words each (comprehensive but concise)
+2. Clearly describe the functionality, inputs, and outputs
+3. Include specific features and capabilities
 4. Build upon what the user has started typing
+5. Are production-ready and technically specific
 
-Return ONLY a JSON array of 3 strings, nothing else. Each string must be 5-6 words. Example format:
-["Real-time weather data for cities", "Get stock prices and trends", "Send email notifications with templates"]"""
+Return ONLY a JSON array of 3 strings, nothing else. Example format:
+["An API that fetches real-time weather data for any city with temperature, humidity, wind speed, and 7-day forecast. Includes caching and supports multiple providers.",
+ "An API that sends weather alerts when specific conditions are met like temperature thresholds or storm warnings. Features webhook integration and customizable alert rules.",
+ "An API that provides historical weather data and climate trends for analysis. Offers data export in CSV/JSON and aggregation by time periods."]"""
 
         user_prompt = f"""API Name: {request.apiName or 'Unnamed API'}
 Partial Description: {request.partialPrompt or 'No description yet'}
@@ -97,14 +100,17 @@ async def suggest_about(request: SuggestAboutRequest, user_id: str = Depends(ver
 
         client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
 
-        system_prompt = """You are writing marketplace descriptions for APIs. Given an API name and description, suggest 3 concise "about" descriptions that:
-1. Are exactly 5-6 words each
-2. Are user-friendly and appealing
-3. Highlight the core value proposition
-4. Are compelling for potential users
+        system_prompt = """You are writing marketplace descriptions for APIs. Given an API name and description, suggest 3 compelling "about" descriptions that:
+1. Are 15-30 words each (brief but informative)
+2. Are user-friendly and highlight key benefits
+3. Focus on what problems the API solves
+4. Use action-oriented, engaging language
+5. Are compelling for potential API consumers
 
-Return ONLY a JSON array of 3 strings, nothing else. Each string must be 5-6 words. Example format:
-["Real-time weather for any city", "Track stock prices and trends", "Send automated email notifications instantly"]"""
+Return ONLY a JSON array of 3 strings, nothing else. Example format:
+["Get real-time weather data and forecasts for any city worldwide. Perfect for building weather apps and dashboards with accurate, up-to-date information.",
+ "Send automated weather alerts based on temperature, conditions, or storm warnings. Ideal for agricultural and logistics applications requiring weather monitoring.",
+ "Access historical weather data and climate trends for data analysis and research projects with comprehensive metrics and export options."]"""
 
         user_prompt = f"""API Name: {request.apiName or 'Unnamed API'}
 API Description: {request.partialPrompt or 'No description yet'}
