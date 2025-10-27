@@ -433,6 +433,22 @@ CRITICAL REQUIREMENTS:
      * headers: { 'Authorization': `Bearer ${apiKey}` }
      * This is MANDATORY - requests will fail without it
 
+   - RESPONSE HANDLING - URLs in API responses:
+     * If API returns a relative URL like "/images/uuid", convert it to absolute:
+     * const imageUrl = response.url.startsWith('http') ? response.url : `${apiUrl}${response.url}`;
+     * When displaying images from API responses, append Authorization header:
+       - WRONG: <img src={response.url} /> (will fail with 401)
+       - RIGHT: Use fetch with auth to get image, convert to blob URL:
+         ```javascript
+         const imgResponse = await fetch(fullUrl, {
+           headers: { 'Authorization': `Bearer ${apiKey}` }
+         });
+         const blob = await imgResponse.blob();
+         const blobUrl = URL.createObjectURL(blob);
+         <img src={blobUrl} />
+         ```
+     * Same applies for audio files, PDFs, or any protected resource
+
 5. Visual enhancements:
    - Use Tailwind CSS classes for styling
    - CRITICAL: ALL input fields must have dark text: className="... text-gray-900"
