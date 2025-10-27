@@ -361,7 +361,14 @@ CRITICAL REQUIREMENTS:
 1. Parse the code to understand ALL endpoints, parameters, and requirements
    - Look for @router.post(), @router.get(), etc. decorators to find endpoint paths
    - Check function signatures for path parameters like {width}, {height}
-   - Identify whether parameters are in the path, query string, or body
+   - ANALYZE FUNCTION SIGNATURES CAREFULLY:
+     * If you see: async def func(file: UploadFile = File(...), params: SomeModel = None)
+     * This means file goes as file upload AND params must be sent as JSON string in FormData
+     * Example: formData.append('file', file); formData.append('params', JSON.stringify({...}));
+     * If you see: async def func(file: UploadFile = File(...), width: int, height: int)
+     * This means individual form fields: formData.append('width', width); formData.append('height', height);
+   - Identify whether parameters are in the path, query string, body, or form data
+   - For Pydantic models in function params, check the model definition to see all required fields
    - CRITICAL URL CONSTRUCTION: The apiUrl provided does NOT have a trailing slash, so you MUST ensure proper slash handling
    - ALWAYS ensure there is exactly ONE slash between apiUrl and the endpoint path
    - WRONG: `${apiUrl}sounds/search/` (missing slash between apiUrl and 'sounds')
@@ -385,7 +392,7 @@ CRITICAL REQUIREMENTS:
    - JSON objects: <textarea> with validation
    - ALWAYS parse number inputs with parseInt() or parseFloat() and provide fallback values
 
-3. For FILE UPLOADS:
+3. For FILE UPLOADS - ANALYZE THE FUNCTION SIGNATURE:
    - Add proper file input with drag-and-drop
    - Show file preview (images, audio player, etc.)
    - Display file size/type validation
@@ -394,6 +401,27 @@ CRITICAL REQUIREMENTS:
      * const formData = new FormData();
      * formData.append('file', file);
      * fetch(url, { method: 'POST', body: formData, headers: { 'Authorization': `Bearer ${apiKey}` } })
+
+   - PATTERN 1: File + Pydantic Model (e.g., async def resize(file: UploadFile, params: ResizeRequest))
+     * Look for Pydantic model class definition (class ResizeRequest(BaseModel):)
+     * Extract all fields from the model (width, height, preserve_aspect_ratio, etc.)
+     * Create UI inputs for each field with proper defaults
+     * Build JSON object from user inputs and append as string:
+       const formData = new FormData();
+       formData.append('file', selectedFile);
+       formData.append('params', JSON.stringify({
+         width: widthValue,
+         height: heightValue,
+         preserve_aspect_ratio: preserveRatio,
+         optimize: optimizeValue
+       }));
+
+   - PATTERN 2: File + Individual Params (e.g., async def resize(file: UploadFile, width: int, height: int))
+     * Append each parameter individually to FormData:
+       const formData = new FormData();
+       formData.append('file', selectedFile);
+       formData.append('width', width.toString());
+       formData.append('height', height.toString());
 
 4. For each endpoint, create:
    - Clear labeled form fields
