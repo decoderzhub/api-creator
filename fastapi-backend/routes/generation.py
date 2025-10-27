@@ -124,13 +124,21 @@ Requirements:
     {\"status\": \"success\", \"result\": {...}}
     \"\"\"
 
-The code should be a complete, self-contained FastAPI application that can be executed with only the standard libraries listed above."""
+The code should be a complete, self-contained FastAPI application that can be executed with only the standard libraries listed above.
+
+CRITICAL OUTPUT REQUIREMENTS:
+- Return ONLY executable Python code
+- NO explanatory text before the code
+- NO explanatory text or notes after the code
+- NO markdown formatting
+- The response must be pure Python code that can be directly executed
+- If you need to add notes, include them as comments within the code using # """
 
         user_prompt = f"""API Name: {request.apiName}
 
 Description: {request.prompt}
 
-Generate the complete FastAPI code for this API."""
+Generate the complete FastAPI code for this API. Return ONLY the Python code with no additional text or explanations."""
 
         message = client.messages.create(
             model="claude-3-5-sonnet-20241022",
@@ -143,6 +151,24 @@ Generate the complete FastAPI code for this API."""
         code = message.content[0].text
 
         code = code.replace("```python", "").replace("```", "").strip()
+
+        # Remove any explanatory text after the code
+        # Look for common patterns of trailing explanations
+        lines = code.split('\n')
+        clean_lines = []
+        found_main = False
+
+        for line in lines:
+            # Stop if we find explanatory text patterns
+            stripped = line.strip()
+            if stripped.startswith('Note:') or stripped.startswith('Important:') or stripped.startswith('Explanation:'):
+                break
+            clean_lines.append(line)
+            if 'if __name__ == "__main__"' in line:
+                found_main = True
+
+        # If we found the if __main__ block, take everything up to and including it
+        code = '\n'.join(clean_lines)
 
         return {
             "code": code,
