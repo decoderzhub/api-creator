@@ -79,6 +79,21 @@ Requirements:
    - Response format
 6. Follow REST best practices
 7. Return ONLY the Python code, no explanations
+0. CRITICAL: ALWAYS include CORS middleware configuration at the start of the app:
+   ```python
+   from fastapi.middleware.cors import CORSMiddleware
+
+   app = FastAPI(...)
+
+   app.add_middleware(
+       CORSMiddleware,
+       allow_origins=["*"],
+       allow_credentials=True,
+       allow_methods=["*"],
+       allow_headers=["*"],
+   )
+   ```
+   This MUST be included in EVERY generated API to allow cross-origin requests from the web interface.
 8. CRITICAL: Only use these available libraries:
    - fastapi
    - pydantic
