@@ -517,6 +517,14 @@ CRITICAL REQUIREMENTS:
    - Start immediately with: const CustomAPITest = ({ apiUrl, apiKey }) => {
    - End immediately after the closing }; of the component
 
+9. JSX STRING SAFETY - CRITICAL:
+   - ALWAYS use curly braces for dynamic values: {response.width}
+   - NEVER break strings across lines in JSX
+   - ALWAYS close all string literals with matching quotes
+   - Use template literals for complex strings: `${value1} × ${value2}`
+   - Escape special characters properly
+   - Test that all strings are properly terminated before the component ends
+
 9. For IMAGE APIs: Include image preview after upload and after response
 10. For AUDIO APIs: Include audio player for testing playback
 11. For DATA APIs: Include JSON formatter and copy functionality
@@ -609,6 +617,58 @@ Generate a custom React testing component specifically designed for this API's f
             if not line.strip().startswith('import ') and not line.strip().startswith('export '):
                 cleaned_lines.append(line)
         component_code = '\n'.join(cleaned_lines).strip()
+
+        # Basic syntax validation - check for unterminated strings
+        def validate_jsx_syntax(code):
+            """Basic check for common syntax errors"""
+            # Check for balanced quotes in className attributes
+            import re
+
+            # Find all className attributes
+            classname_pattern = r'className\s*=\s*["\']'
+            matches = list(re.finditer(classname_pattern, code))
+
+            for match in matches:
+                start = match.end()
+                quote_char = code[match.end() - 1]
+
+                # Find the closing quote
+                escaped = False
+                found_close = False
+                for i in range(start, min(start + 500, len(code))):
+                    if code[i] == '\\' and not escaped:
+                        escaped = True
+                        continue
+                    if code[i] == quote_char and not escaped:
+                        found_close = True
+                        break
+                    escaped = False
+
+                if not found_close:
+                    # Try to fix by adding closing quote before next tag or newline
+                    logger.warning(f"Found unterminated string at position {match.start()}")
+                    return False
+
+            return True
+
+        # Validate the generated code
+        if not validate_jsx_syntax(component_code):
+            logger.error("Generated component has syntax errors, regenerating...")
+            # Return a simple fallback component
+            component_code = """const CustomAPITest = ({ apiUrl, apiKey }) => {
+  const [loading, setLoading] = useState(false);
+  const [response, setResponse] = useState(null);
+  const [error, setError] = useState('');
+
+  return (
+    <div className="space-y-4 p-6 bg-white rounded-lg shadow">
+      <div className="text-center">
+        <p className="text-gray-700">Custom test interface generation failed.</p>
+        <p className="text-sm text-gray-500 mt-2">Please use the Test Endpoint buttons above.</p>
+      </div>
+    </div>
+  );
+};"""
 
         return {
             "componentCode": component_code,
