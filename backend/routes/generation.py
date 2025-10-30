@@ -106,6 +106,7 @@ Requirements:
    - os (for environment variables)
    - io, base64 (for file handling)
    - PIL (Pillow) for image processing - AVAILABLE and RECOMMENDED
+   - minio (MinIO client for S3-compatible storage) - REQUIRED for file uploads/storage
    DO NOT import any other external libraries like aiohttp, requests, passlib, bcrypt, opencv, numpy, pandas, etc.
 9. For any data storage, use simple in-memory structures (dicts, lists) as this is a demo
 10. Do NOT include authentication or rate limiting - keep it simple
@@ -138,6 +139,63 @@ Requirements:
       * resized_data = buffer.getvalue()
     - Always validate file type: file.content_type
     - Add docstring with curl example: curl -X POST -F "file=@image.jpg" -F "width=800" -F "height=600"
+
+    - CRITICAL: For FILE STORAGE (when files need to be saved and returned as URLs):
+      * ALWAYS use MinIO S3-compatible storage
+      * Import minio library: from minio import Minio
+      * Get credentials from environment:
+        ```python
+        MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT", "minio.systemd.diskstation.me")
+        MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY", "admin")
+        MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY", "")
+        MINIO_PUBLIC_URL = os.getenv("MINIO_PUBLIC_URL", "https://minio.systemd.diskstation.me")
+        MINIO_SECURE = os.getenv("MINIO_SECURE", "true").lower() == "true"
+        ```
+      * Initialize MinIO client:
+        ```python
+        minio_client = Minio(
+            MINIO_ENDPOINT,
+            access_key=MINIO_ACCESS_KEY,
+            secret_key=MINIO_SECRET_KEY,
+            secure=MINIO_SECURE
+        )
+        ```
+      * Upload files to MinIO and return public URLs:
+        ```python
+        import uuid
+        from minio.error import S3Error
+
+        # Ensure bucket exists
+        bucket_name = "user-uploads"
+        if not minio_client.bucket_exists(bucket_name):
+            minio_client.make_bucket(bucket_name)
+            # Set public read policy
+            policy = f'''{{
+                "Version": "2012-10-17",
+                "Statement": [{{
+                    "Effect": "Allow",
+                    "Principal": {{"AWS": ["*"]}},
+                    "Action": ["s3:GetObject"],
+                    "Resource": ["arn:aws:s3:::{bucket_name}/*"]
+                }}]
+            }}'''
+            minio_client.set_bucket_policy(bucket_name, policy)
+
+        # Upload file
+        file_id = str(uuid.uuid4())
+        filename = f"{file_id}.jpg"
+        minio_client.put_object(
+            bucket_name,
+            filename,
+            BytesIO(processed_file_data),
+            len(processed_file_data),
+            content_type="image/jpeg"
+        )
+
+        # Return public URL
+        public_url = f"{MINIO_PUBLIC_URL}/{bucket_name}/{filename}"
+        ```
+      * NEVER save files to local disk - always use MinIO for persistence
 
 12. SPECIAL INTEGRATIONS:
     - For sound/audio APIs, integrate Freesound.org API:

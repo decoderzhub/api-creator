@@ -65,12 +65,12 @@ class APIDeployer:
                 (api_dir / "main.py").write_text(code)
 
                 if requirements:
-                    base_requirements = "fastapi==0.109.0\nuvicorn[standard]==0.27.0\npython-multipart==0.0.6\n"
+                    base_requirements = "fastapi==0.109.0\nuvicorn[standard]==0.27.0\npython-multipart==0.0.6\nminio==7.2.3\nPillow==10.2.0\n"
                     full_requirements = base_requirements + requirements
                     (api_dir / "requirements.txt").write_text(full_requirements)
                 else:
                     (api_dir / "requirements.txt").write_text(
-                        "fastapi==0.109.0\nuvicorn[standard]==0.27.0\npython-multipart==0.0.6\n"
+                        "fastapi==0.109.0\nuvicorn[standard]==0.27.0\npython-multipart==0.0.6\nminio==7.2.3\nPillow==10.2.0\n"
                     )
 
                 dockerfile = """FROM python:3.11-slim
@@ -115,6 +115,10 @@ CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
                     logger.warning(f"Error removing existing container: {str(e)}")
 
                 logger.info(f"Starting container for API {api_id} on port {host_port}")
+
+                from config import get_settings
+                settings = get_settings()
+
                 container = self.client.containers.run(
                     image.id,
                     name=container_name,
@@ -123,6 +127,14 @@ CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
                     mem_limit='512m',
                     cpu_quota=100000,
                     restart_policy={"Name": "unless-stopped"},
+                    environment={
+                        'MINIO_ENDPOINT': settings.minio_endpoint,
+                        'MINIO_ACCESS_KEY': settings.minio_access_key,
+                        'MINIO_SECRET_KEY': settings.minio_secret_key,
+                        'MINIO_PUBLIC_URL': settings.minio_public_url,
+                        'MINIO_SECURE': str(settings.minio_secure).lower(),
+                        'FREESOUND_API_KEY': settings.freesound_api_key,
+                    },
                     labels={
                         'app': 'api-builder',
                         'api_id': api_id
