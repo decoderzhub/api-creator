@@ -160,7 +160,11 @@ export const StreamingDynamicTestUI: React.FC<StreamingDynamicTestUIProps> = ({
     const loadSavedComponent = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
-        if (!session) return;
+        if (!session) {
+          console.log('No session, generating new component');
+          fetchTestUIStream();
+          return;
+        }
 
         const response = await fetch(`${API_BASE_URL}/load-test-ui/${apiId}`, {
           headers: {
@@ -168,27 +172,33 @@ export const StreamingDynamicTestUI: React.FC<StreamingDynamicTestUIProps> = ({
           },
         });
 
+        if (!response.ok) {
+          console.log('Failed to load saved component, generating new one');
+          fetchTestUIStream();
+          return;
+        }
+
         const result = await response.json();
         if (result.success && result.componentCode) {
           console.log('Loaded saved component from database');
           setComponentCode(result.componentCode);
+          setFinalCode(result.componentCode);
           setSavedComponentId(result.componentId);
           setHasSavedComponent(true);
           setLoading(false);
           setIsStreaming(false);
         } else {
-          // No saved component, generate new one
+          console.log('No saved component found, generating new one');
           fetchTestUIStream();
         }
       } catch (err) {
         console.error('Failed to load saved component:', err);
-        // Fall back to generating new one
         fetchTestUIStream();
       }
     };
 
     loadSavedComponent();
-  }, [apiId]);
+  }, [apiId, fetchTestUIStream]);
 
   const [compilationError, setCompilationError] = useState<string | null>(null);
 
