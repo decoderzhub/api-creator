@@ -239,6 +239,7 @@ export const StreamingDynamicTestUI: React.FC<StreamingDynamicTestUIProps> = ({
 
       console.log('Component evaluated successfully');
       setCompilationError(null);
+      setRetryCount(0); // Reset retry count on success
 
       return () => (
         <CustomAPITest
@@ -318,7 +319,7 @@ export const StreamingDynamicTestUI: React.FC<StreamingDynamicTestUIProps> = ({
 
       return () => clearTimeout(timer);
     }
-  }, [compilationError, autoRetry, retryCount, isStreaming]);
+  }, [compilationError, autoRetry, retryCount, isStreaming, fetchTestUIStream]);
 
   const displayError = error || compilationError;
 
