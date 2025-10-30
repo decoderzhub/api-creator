@@ -754,15 +754,19 @@ CRITICAL REQUIREMENTS:
    - Copy button for results
 
 6. Available libraries (passed as props to your component):
-   - React: destructure hooks like const { useState, useEffect } = React;
+   - React: ALWAYS destructure ALL hooks you need at the top: const { useState, useEffect, useRef, useMemo, useCallback } = React;
+   - CRITICAL: If you use useRef, you MUST destructure it from React
+   - CRITICAL: If you use useMemo, you MUST destructure it from React
+   - CRITICAL: If you use useCallback, you MUST destructure it from React
    - LucideIcons: use icons like <LucideIcons.Search className="..." />
    - ReactMarkdown: for rendering markdown responses
    - remarkGfm: for GitHub Flavored Markdown support
-   - Example usage for markdown API responses:
+   - Example usage:
      ```
      const CustomAPITest = ({ apiUrl, apiKey, React, LucideIcons, ReactMarkdown, remarkGfm }) => {
-       const { useState, useEffect } = React;
+       const { useState, useEffect, useRef } = React;
        const [response, setResponse] = useState('');
+       const fileInputRef = useRef(null);
 
        // Display markdown response
        return <ReactMarkdown remarkPlugins={[remarkGfm]}>{response}</ReactMarkdown>;

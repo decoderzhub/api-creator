@@ -38,7 +38,7 @@ export const StreamingDynamicTestUI: React.FC<StreamingDynamicTestUIProps> = ({
   const [lastError, setLastError] = useState<string | null>(null);
   const maxRetries = 3;
 
-  const fetchTestUIStream = useCallback(async (isRetry = false) => {
+  const fetchTestUIStream = useCallback(async (isRetry = false, errorContext: string | null = null, attemptNumber: number = 0) => {
     try {
       setLoading(true);
       setIsStreaming(true);
@@ -60,9 +60,9 @@ export const StreamingDynamicTestUI: React.FC<StreamingDynamicTestUIProps> = ({
       };
 
       // Include error context if this is a retry
-      if (isRetry && lastError) {
-        requestBody.previousError = lastError;
-        requestBody.retryAttempt = retryCount + 1;
+      if (isRetry && errorContext) {
+        requestBody.previousError = errorContext;
+        requestBody.retryAttempt = attemptNumber;
       }
 
       const response = await fetch(`${API_BASE_URL}/generate-test-ui-stream`, {
@@ -151,7 +151,7 @@ export const StreamingDynamicTestUI: React.FC<StreamingDynamicTestUIProps> = ({
     } finally {
       setLoading(false);
     }
-  }, [code, apiName, apiId, apiUrl, lastError, retryCount]);
+  }, [code, apiName, apiId, apiUrl]);
 
   useEffect(() => {
     fetchTestUIStream();
@@ -211,13 +211,14 @@ export const StreamingDynamicTestUI: React.FC<StreamingDynamicTestUIProps> = ({
       setLastError(compilationError);
 
       const timer = setTimeout(() => {
-        setRetryCount(retryCount + 1);
-        fetchTestUIStream(true);
+        const nextRetry = retryCount + 1;
+        setRetryCount(nextRetry);
+        fetchTestUIStream(true, compilationError, nextRetry);
       }, 1500);
 
       return () => clearTimeout(timer);
     }
-  }, [compilationError, autoRetry, retryCount, isStreaming, fetchTestUIStream]);
+  }, [compilationError, autoRetry, retryCount, isStreaming]);
 
   const displayError = error || compilationError;
 
@@ -242,7 +243,7 @@ export const StreamingDynamicTestUI: React.FC<StreamingDynamicTestUIProps> = ({
             setLastError(null);
             setCompilationError(null);
             setError(null);
-            fetchTestUIStream(false);
+            fetchTestUIStream(false, null, 0);
           }} variant="outline" size="sm">
             <RefreshCw className="w-4 h-4 mr-2" />
             Try Again
@@ -290,13 +291,6 @@ export const StreamingDynamicTestUI: React.FC<StreamingDynamicTestUIProps> = ({
     );
   }
 
-  console.log('Render state:', {
-    isStreaming,
-    hasComponentCode: !!componentCode,
-    hasFinalCode: !!finalCode,
-    hasDynamicComponent: !!DynamicComponent,
-    loading
-  });
 
   return (
     <div className="space-y-4">
@@ -370,7 +364,7 @@ export const StreamingDynamicTestUI: React.FC<StreamingDynamicTestUIProps> = ({
             <Button onClick={() => {
               setRetryCount(0);
               setLastError(null);
-              fetchTestUIStream(false);
+              fetchTestUIStream(false, null, 0);
             }} variant="outline">
               <RefreshCw className="w-4 h-4 mr-2" />
               Regenerate Interface
