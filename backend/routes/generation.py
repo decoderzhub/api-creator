@@ -987,7 +987,8 @@ Generate a custom React testing component specifically designed for this API's f
 async def save_test_ui(request: SaveTestUIRequest, user_id: str = Depends(verify_token)):
     """Save generated test UI component to database"""
     try:
-        from database import supabase
+        from database import get_supabase_client
+        supabase = get_supabase_client()
 
         # Check if user owns this API
         api_check = supabase.table('apis').select('user_id').eq('id', request.apiId).eq('user_id', user_id).maybeSingle().execute()
@@ -1019,7 +1020,8 @@ async def save_test_ui(request: SaveTestUIRequest, user_id: str = Depends(verify
 async def load_test_ui(api_id: str, user_id: str = Depends(verify_token)):
     """Load saved test UI component from database"""
     try:
-        from database import supabase
+        from database import get_supabase_client
+        supabase = get_supabase_client()
 
         # Check if user owns this API
         api_check = supabase.table('apis').select('user_id').eq('id', api_id).eq('user_id', user_id).maybeSingle().execute()
