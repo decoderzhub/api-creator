@@ -839,15 +839,15 @@ CRITICAL INSTRUCTIONS FOR FIXING:
    - ALWAYS use double quotes for ALL className values
    - Use {{}} for JavaScript expressions in JSX, not single braces
    - Close all self-closing tags with />
-   - Never put JSX comments inside JSX elements (use {/* comment */})
+   - Never put JSX comments inside JSX elements
 
 VALIDATION CHECKLIST - Go through each line:
-✓ Every opening quote has a closing quote on the same line
-✓ Every className=" has a matching closing "
-✓ Every opening tag < has a matching closing tag >
-✓ Every { has a matching }
-✓ Template literals use backticks ` not quotes
-✓ No bare strings without quotes
+- Every opening quote has a closing quote on the same line
+- Every className=" has a matching closing "
+- Every opening tag < has a matching closing tag >
+- Every opening brace has a matching closing brace
+- Template literals use backticks not quotes
+- No bare strings without quotes
 
 Analyze the previous code and error, identify the EXACT issue, and generate a CORRECTED version that fixes it. Do not make the same mistake again."""
         elif request.improvementRequest and request.previousCode:
