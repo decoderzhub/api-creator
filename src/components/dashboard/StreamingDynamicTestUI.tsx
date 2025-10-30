@@ -224,18 +224,29 @@ export const StreamingDynamicTestUI: React.FC<StreamingDynamicTestUIProps> = ({
 
     try {
       const transformedCode = Babel.transform(componentCode, {
-        presets: ['react', 'typescript'],
+        presets: [
+          ['react', { runtime: 'classic' }],
+          ['typescript', { allExtensions: true, isTSX: true }]
+        ],
         filename: 'dynamic-component.tsx',
       }).code;
 
       console.log('Babel transformation successful');
+      console.log('Transformed code sample:', transformedCode?.substring(0, 300));
 
-      const CustomAPITest = eval(`
-        (function() {
-          ${transformedCode}
-          return CustomAPITest;
-        })()
-      `);
+      // Create function with proper context
+      const componentFactory = new Function(
+        'React',
+        'LucideIcons',
+        'ReactMarkdown',
+        'remarkGfm',
+        `
+        ${transformedCode}
+        return CustomAPITest;
+        `
+      );
+
+      const CustomAPITest = componentFactory(React, LucideIcons, ReactMarkdown, remarkGfm);
 
       console.log('Component evaluated successfully');
       setCompilationError(null);
