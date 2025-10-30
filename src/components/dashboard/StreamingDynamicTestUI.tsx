@@ -155,59 +155,10 @@ export const StreamingDynamicTestUI: React.FC<StreamingDynamicTestUIProps> = ({
     }
   }, [code, apiName, apiId, apiUrl]);
 
-  // Load saved component on mount
+  // Generate component on mount
   useEffect(() => {
-    let isMounted = true;
-
-    const loadSavedComponent = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) {
-          console.log('No session, generating new component');
-          if (isMounted) fetchTestUIStream();
-          return;
-        }
-
-        const response = await fetch(`${API_BASE_URL}/load-test-ui/${apiId}`, {
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-          },
-        });
-
-        if (!response.ok) {
-          console.log('Failed to load saved component, generating new one');
-          if (isMounted) fetchTestUIStream();
-          return;
-        }
-
-        const result = await response.json();
-        if (result.success && result.componentCode) {
-          console.log('Loaded saved component from database');
-          if (isMounted) {
-            setComponentCode(result.componentCode);
-            setFinalCode(result.componentCode);
-            setSavedComponentId(result.componentId);
-            setHasSavedComponent(true);
-            setLoading(false);
-            setIsStreaming(false);
-          }
-        } else {
-          console.log('No saved component found, generating new one');
-          if (isMounted) fetchTestUIStream();
-        }
-      } catch (err) {
-        console.error('Failed to load saved component:', err);
-        if (isMounted) fetchTestUIStream();
-      }
-    };
-
-    loadSavedComponent();
-
-    return () => {
-      isMounted = false;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [apiId]);
+    fetchTestUIStream();
+  }, [fetchTestUIStream]);
 
   const [compilationError, setCompilationError] = useState<string | null>(null);
 
