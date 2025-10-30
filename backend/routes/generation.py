@@ -753,6 +753,29 @@ CRITICAL REQUIREMENTS:
    - Show request/response tabs
    - Copy button for results
 
+6. Available libraries (passed as props to your component):
+   - React: destructure hooks like const { useState, useEffect } = React;
+   - LucideIcons: use icons like <LucideIcons.Search className="..." />
+   - ReactMarkdown: for rendering markdown responses
+   - remarkGfm: for GitHub Flavored Markdown support
+   - Example usage for markdown API responses:
+     ```
+     const CustomAPITest = ({ apiUrl, apiKey, React, LucideIcons, ReactMarkdown, remarkGfm }) => {
+       const { useState, useEffect } = React;
+       const [response, setResponse] = useState('');
+
+       // Display markdown response
+       return <ReactMarkdown remarkPlugins={[remarkGfm]}>{response}</ReactMarkdown>;
+     };
+     ```
+
+CRITICAL SYNTAX RULES:
+   - NEVER use unterminated strings - always close quotes properly
+   - Be extra careful with template literals and nested quotes
+   - Always escape quotes inside strings: use \' or \" when needed
+   - Double-check all JSX tags are properly closed
+   - Ensure all braces {{ }} are balanced
+
 Return ONLY the component code starting with 'const CustomAPITest = ...' and ending with '};'. No explanations, no markdown code blocks."""
 
         if request.previousError and request.retryAttempt > 0:

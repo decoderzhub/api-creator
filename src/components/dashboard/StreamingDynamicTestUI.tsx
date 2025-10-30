@@ -8,6 +8,8 @@ import React from 'react';
 import { API_BASE_URL } from '../../lib/endpoints';
 import { supabase } from '../../lib/supabase';
 import * as Babel from '@babel/standalone';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 interface StreamingDynamicTestUIProps {
   apiId: string;
@@ -189,6 +191,8 @@ export const StreamingDynamicTestUI: React.FC<StreamingDynamicTestUIProps> = ({
           apiKey={apiKey}
           LucideIcons={LucideIcons}
           React={React}
+          ReactMarkdown={ReactMarkdown}
+          remarkGfm={remarkGfm}
         />
       );
     } catch (err: any) {
