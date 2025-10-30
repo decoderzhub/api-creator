@@ -14,6 +14,7 @@ class Settings(BaseSettings):
 
     # AI Services
     anthropic_api_key: str
+    llm_model: str = "claude-3-7-sonnet-20250219"
 
     # Freesound API
     freesound_api_key: str

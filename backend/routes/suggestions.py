@@ -59,7 +59,7 @@ Partial Description: {request.partialPrompt or 'No description yet'}
 Suggest 3 complete API descriptions:"""
 
         message = client.messages.create(
-            model="claude-3-5-sonnet-20241022",
+            model=settings.llm_model,
             max_tokens=800,
             messages=[
                 {"role": "user", "content": f"{system_prompt}\n\n{user_prompt}"}
@@ -118,7 +118,7 @@ API Description: {request.partialPrompt or 'No description yet'}
 Suggest 3 marketplace-ready "about" descriptions:"""
 
         message = client.messages.create(
-            model="claude-3-5-sonnet-20241022",
+            model=settings.llm_model,
             max_tokens=500,
             messages=[
                 {"role": "user", "content": f"{system_prompt}\n\n{user_prompt}"}

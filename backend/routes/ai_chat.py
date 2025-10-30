@@ -127,7 +127,7 @@ Keep responses under 250 words unless asked for more detail."""
         messages.append({"role": "user", "content": message})
 
         with client.messages.stream(
-            model="claude-3-5-sonnet-20241022",
+            model=settings.llm_model,
             max_tokens=1024,
             system=system_prompt,
             messages=messages,

@@ -161,7 +161,7 @@ Description: {request.prompt}
 Generate the complete FastAPI code for this API. Return ONLY the Python code with no additional text or explanations."""
 
         message = client.messages.create(
-            model="claude-3-5-sonnet-20241022",
+            model=settings.llm_model,
             max_tokens=2000,
             messages=[
                 {"role": "user", "content": f"{system_prompt}\n\n{user_prompt}"}
@@ -248,7 +248,7 @@ Description: {request.prompt}
 Analyze this and determine if clarifying questions would help create a better API."""
 
         message = client.messages.create(
-            model="claude-3-5-sonnet-20241022",
+            model=settings.llm_model,
             max_tokens=1500,
             messages=[
                 {"role": "user", "content": f"{system_prompt}\n\n{user_prompt}"}
@@ -337,7 +337,7 @@ Code:
 Generate comprehensive documentation with accurate curl examples and proper headers."""
 
         message = client.messages.create(
-            model="claude-3-5-sonnet-20241022",
+            model=settings.llm_model,
             max_tokens=2500,
             messages=[
                 {"role": "user", "content": f"{system_prompt}\n\n{user_prompt}"}
@@ -548,7 +548,7 @@ FastAPI Code:
 Generate a custom React testing component specifically designed for this API's functionality."""
 
         message = client.messages.create(
-            model="claude-3-5-sonnet-20241022",
+            model=settings.llm_model,
             max_tokens=3000,
             messages=[
                 {"role": "user", "content": f"{system_prompt}\\n\\n{user_prompt}"}
