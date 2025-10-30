@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Check, Code2, Loader2 } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import rehypeHighlight from 'rehype-highlight';
+import 'highlight.js/styles/vs2015.css';
 
 interface StreamingCodeViewerProps {
   isStreaming: boolean;
@@ -15,7 +18,7 @@ export function StreamingCodeViewer({
   finalCode,
   language = 'tsx'
 }: StreamingCodeViewerProps) {
-  const codeRef = useRef<HTMLPreElement>(null);
+  const codeRef = useRef<HTMLDivElement>(null);
   const [displayedCode, setDisplayedCode] = useState('');
 
   useEffect(() => {
@@ -59,6 +62,7 @@ export function StreamingCodeViewer({
   };
 
   const lineCount = displayedCode.split('\n').length;
+  const markdownCode = `\`\`\`${language}\n${displayedCode}\n\`\`\``;
 
   return (
     <div className="space-y-3">
@@ -81,14 +85,30 @@ export function StreamingCodeViewer({
       {/* Code Display */}
       <div className="relative">
         {displayedCode ? (
-          <div className="relative bg-gray-900 rounded-b-lg overflow-hidden">
-            <pre
-              ref={codeRef}
-              className="p-4 overflow-auto max-h-[600px] text-sm leading-relaxed font-mono"
-              style={{ scrollBehavior: 'smooth' }}
-            >
-              <code className="text-gray-100">{displayedCode}</code>
-            </pre>
+          <div
+            ref={codeRef}
+            className="relative rounded-b-lg overflow-auto max-h-[600px]"
+            style={{ scrollBehavior: 'smooth' }}
+          >
+            <div className="prose prose-invert max-w-none text-xs">
+              <ReactMarkdown
+                rehypePlugins={[rehypeHighlight]}
+                components={{
+                  pre: ({ children }) => (
+                    <pre className="!bg-gray-900 !p-4 !m-0 rounded-b-lg overflow-x-auto !text-xs">
+                      {children}
+                    </pre>
+                  ),
+                  code: ({ children, className }) => (
+                    <code className={`${className} !text-xs`}>
+                      {children}
+                    </code>
+                  ),
+                }}
+              >
+                {markdownCode}
+              </ReactMarkdown>
+            </div>
 
             {/* Streaming Cursor */}
             {isStreaming && !finalCode && (
