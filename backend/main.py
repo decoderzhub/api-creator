@@ -2,8 +2,8 @@
 FastAPI Gateway Service
 Main entry point for the API gateway that routes requests to user-generated APIs
 """
-from fastapi import FastAPI, Request, HTTPException, Header
-from fastapi.responses import JSONResponse
+from fastapi import FastAPI, Request, HTTPException, Header, UploadFile
+from fastapi.responses import JSONResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 import os
@@ -13,6 +13,7 @@ import time
 import contextvars
 
 from api_loader import APILoader
+from api_deployer import APIDeployer
 from auth import verify_api_key, log_api_usage
 from config import get_settings
 from rate_limiter import check_rate_limit, increment_rate_limit
@@ -98,23 +99,39 @@ async def add_request_id_middleware(request: Request, call_next):
 
 
 api_loader = APILoader()
+api_deployer = APIDeployer()
 
 app.state.api_loader = api_loader
+app.state.api_deployer = api_deployer
 
 
 @app.on_event("startup")
 async def startup_event():
-    """Load all active APIs from database on startup"""
+    """Deploy all active APIs in Docker containers on startup"""
     logger.info("Starting API Gateway...")
     try:
-        await api_loader.load_all_apis()
+        response = supabase.table("apis").select("*").eq("status", "active").execute()
+
+        deployed_count = 0
+        for api_data in response.data:
+            api_id = api_data["id"]
+            code = api_data.get("code_snapshot")
+            requirements = api_data.get("requirements")
+
+            if code:
+                try:
+                    await api_deployer.deploy_api(api_id, code, requirements)
+                    deployed_count += 1
+                except Exception as e:
+                    logger.error(f"Failed to deploy API {api_id} on startup: {str(e)}")
+
         logger.info(
-            "APIs loaded successfully",
-            extra={"loaded_count": len(api_loader.apis)}
+            "APIs deployed successfully",
+            extra={"deployed_count": deployed_count}
         )
     except Exception as e:
         logger.error(
-            "Failed to load APIs on startup",
+            "Failed to deploy APIs on startup",
             extra={"error": str(e)},
             exc_info=True
         )
@@ -127,7 +144,7 @@ async def root():
     return {
         "service": "API Builder Gateway",
         "status": "running",
-        "loaded_apis": len(api_loader.apis),
+        "deployed_apis": len(api_deployer.api_containers),
         "timestamp": datetime.utcnow().isoformat()
     }
 
@@ -146,7 +163,7 @@ def health_check():
 
     return {
         "status": "healthy" if db_status == "connected" else "degraded",
-        "loaded_apis": len(api_loader.apis),
+        "deployed_apis": len(api_deployer.api_containers),
         "database": db_status,
         "sentry_enabled": sentry_enabled,
         "timestamp": datetime.utcnow().isoformat()
@@ -164,35 +181,151 @@ async def get_metrics(authorization: str = Header(None)):
 
 @app.post("/admin/reload")
 async def reload_apis(authorization: str = Header(None)):
-    """Reload all APIs from database (admin only)"""
+    """Redeploy all APIs from database (admin only)"""
     if authorization != f"Bearer {settings.admin_api_key}":
         raise HTTPException(status_code=401, detail="Unauthorized")
 
-    logger.info("Reloading all APIs")
-    await api_loader.load_all_apis()
-    logger.info("APIs reloaded", extra={"loaded_count": len(api_loader.apis)})
+    logger.info("Redeploying all APIs")
+
+    response = supabase.table("apis").select("*").eq("status", "active").execute()
+    deployed_count = 0
+
+    for api_data in response.data:
+        api_id = api_data["id"]
+        code = api_data.get("code_snapshot")
+        requirements = api_data.get("requirements")
+
+        if code:
+            try:
+                await api_deployer.restart_api(api_id, code, requirements)
+                deployed_count += 1
+            except Exception as e:
+                logger.error(f"Failed to redeploy API {api_id}: {str(e)}")
+
+    logger.info("APIs redeployed", extra={"deployed_count": deployed_count})
 
     return {
         "success": True,
-        "loaded_apis": len(api_loader.apis),
-        "message": "APIs reloaded successfully"
+        "deployed_apis": deployed_count,
+        "message": "APIs redeployed successfully"
     }
 
 
 @app.post("/admin/reload/{api_id}")
 async def reload_single_api(api_id: str, authorization: str = Header(None)):
-    """Reload a single API from database (admin only)"""
+    """Redeploy a single API from database (admin only)"""
     if authorization != f"Bearer {settings.admin_api_key}":
         raise HTTPException(status_code=401, detail="Unauthorized")
 
-    logger.info(f"Reloading API {api_id}")
-    success = await api_loader.load_api(api_id)
-    if success:
-        logger.info(f"API {api_id} reloaded successfully")
-        return {"success": True, "message": f"API {api_id} reloaded"}
-    else:
+    logger.info(f"Redeploying API {api_id}")
+
+    try:
+        response = supabase.table("apis").select("*").eq("id", api_id).single().execute()
+
+        if response.data:
+            api_data = response.data
+            code = api_data.get("code_snapshot")
+            requirements = api_data.get("requirements")
+
+            if code:
+                await api_deployer.restart_api(api_id, code, requirements)
+                logger.info(f"API {api_id} redeployed successfully")
+                return {"success": True, "message": f"API {api_id} redeployed"}
+
         logger.warning(f"API {api_id} not found")
         raise HTTPException(status_code=404, detail="API not found")
+    except Exception as e:
+        logger.error(f"Error redeploying API {api_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/admin/deployments")
+async def list_deployments(authorization: str = Header(None)):
+    """List all deployed APIs (admin only)"""
+    if authorization != f"Bearer {settings.admin_api_key}":
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    return {
+        "success": True,
+        "deployments": api_deployer.get_deployed_apis()
+    }
+
+
+@app.get("/admin/deployment/{api_id}")
+async def get_deployment_status(api_id: str, authorization: str = Header(None)):
+    """Get deployment status and health for a specific API (admin only)"""
+    if authorization != f"Bearer {settings.admin_api_key}":
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    health = await api_deployer.get_api_health(api_id)
+    return {
+        "success": True,
+        "api_id": api_id,
+        "health": health
+    }
+
+
+@app.post("/admin/deployment/{api_id}/stop")
+async def stop_deployment(api_id: str, authorization: str = Header(None)):
+    """Stop a deployed API container (admin only)"""
+    if authorization != f"Bearer {settings.admin_api_key}":
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    try:
+        success = await api_deployer.stop_api(api_id)
+        if success:
+            return {"success": True, "message": f"API {api_id} stopped"}
+        else:
+            raise HTTPException(status_code=404, detail="API not found")
+    except Exception as e:
+        logger.error(f"Error stopping API {api_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/admin/deployment/{api_id}/start")
+async def start_deployment(api_id: str, authorization: str = Header(None)):
+    """Start/deploy an API container (admin only)"""
+    if authorization != f"Bearer {settings.admin_api_key}":
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    try:
+        response = supabase.table("apis").select("*").eq("id", api_id).single().execute()
+
+        if response.data:
+            api_data = response.data
+            code = api_data.get("code_snapshot")
+            requirements = api_data.get("requirements")
+
+            if code:
+                port = await api_deployer.deploy_api(api_id, code, requirements)
+                return {
+                    "success": True,
+                    "message": f"API {api_id} deployed",
+                    "port": port
+                }
+
+        raise HTTPException(status_code=404, detail="API not found")
+    except Exception as e:
+        logger.error(f"Error starting API {api_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/admin/cleanup")
+async def cleanup_containers(authorization: str = Header(None)):
+    """Clean up stopped containers (admin only)"""
+    if authorization != f"Bearer {settings.admin_api_key}":
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    try:
+        await api_deployer.cleanup_stopped_containers()
+        return {
+            "success": True,
+            "message": "Cleanup completed",
+            "remaining_deployments": len(api_deployer.api_containers)
+        }
+    except Exception as e:
+        logger.error(f"Error cleaning up containers: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.api_route("/run/{api_id}", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
@@ -265,57 +398,98 @@ async def proxy_to_user_api(
             content={"error": f"API is {api_metadata.get('status')}"}
         )
 
-    api_handler = api_loader.get_api(api_id)
-    if not api_handler:
-        await api_loader.load_api(api_id)
-        api_handler = api_loader.get_api(api_id)
+    port = api_deployer.get_api_port(api_id)
 
-        if not api_handler:
+    if not port or not api_deployer.is_api_deployed(api_id):
+        logger.info(f"API {api_id} not deployed, deploying now")
+        try:
+            response = supabase.table("apis").select("*").eq("id", api_id).single().execute()
+            api_data = response.data
+            code = api_data.get("code_snapshot")
+            requirements = api_data.get("requirements")
+
+            if code:
+                port = await api_deployer.deploy_api(api_id, code, requirements)
+            else:
+                logger.error(f"No code found for API {api_id}")
+                return JSONResponse(
+                    status_code=503,
+                    content={"error": "API code not found"}
+                )
+        except Exception as e:
             logger.error(
-                "API not loaded",
-                extra={"api_id": api_id, "request_id": request_id}
+                "Failed to deploy API",
+                extra={"api_id": api_id, "error": str(e), "request_id": request_id}
             )
             return JSONResponse(
                 status_code=503,
-                content={"error": "API not loaded. Please try again."}
+                content={"error": "Failed to deploy API. Please try again."}
             )
 
     try:
-        user_app = api_handler.get_app()
+        import httpx
 
-        if not user_app:
-            return JSONResponse(
-                status_code=503,
-                content={"error": "User API app not properly configured"}
+        url_path = f"/{path}" if path else "/"
+
+        content_type = request.headers.get("content-type", "")
+
+        files = None
+        data = None
+        json_data = None
+        body_bytes = None
+
+        if "multipart/form-data" in content_type:
+            form = await request.form()
+            files = {}
+            data = {}
+
+            for key, value in form.items():
+                if isinstance(value, UploadFile):
+                    files[key] = (
+                        value.filename,
+                        await value.read(),
+                        value.content_type
+                    )
+                else:
+                    data[key] = value
+
+        elif "application/json" in content_type:
+            try:
+                json_data = await request.json()
+            except Exception:
+                body_bytes = await request.body()
+
+        elif request.method in ["POST", "PUT", "PATCH"]:
+            body_bytes = await request.body()
+
+        headers_to_forward = {
+            k: v for k, v in request.headers.items()
+            if k.lower() not in ['host', 'content-length', 'transfer-encoding']
+        }
+
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.request(
+                method=request.method,
+                url=f"http://localhost:{port}{url_path}",
+                params=dict(request.query_params),
+                headers=headers_to_forward,
+                files=files,
+                data=data,
+                json=json_data,
+                content=body_bytes if body_bytes else None,
             )
-
-        from starlette.testclient import TestClient
-        client = TestClient(user_app)
-
-        url = f"/{path}" if path else "/"
-        if request.query_params:
-            url += f"?{request.query_params}"
-
-        body = None
-        if request.method in ["POST", "PUT", "PATCH"]:
-            body = await request.body()
-
-        method_fn = getattr(client, request.method.lower())
-
-        if request.method in ["POST", "PUT", "PATCH"] and body:
-            response = method_fn(url, data=body, headers=dict(request.headers))
-        else:
-            response = method_fn(url, headers=dict(request.headers))
 
         await increment_rate_limit(user_id)
 
         response_time = (datetime.utcnow() - start_time).total_seconds() * 1000
+        request_size = len(body_bytes) if body_bytes else 0
+
         await log_api_usage(
             api_id=api_id,
             user_id=api_metadata.get("user_id"),
             status_code=response.status_code,
             response_time_ms=int(response_time),
-            request_size_bytes=len(body) if body else 0
+            request_size_bytes=request_size
         )
 
         logger.info(
@@ -329,14 +503,17 @@ async def proxy_to_user_api(
             }
         )
 
-        return JSONResponse(
-            content=response.json() if response.headers.get("content-type") == "application/json" else {"response": response.text},
+        response_headers = dict(response.headers)
+        response_headers.update({
+            "X-RateLimit-Limit": str(rate_limit_info["limit"]),
+            "X-RateLimit-Remaining": str(max(0, rate_limit_info["remaining"] - 1)),
+            "X-RateLimit-Reset": str(rate_limit_info["reset"])
+        })
+
+        return Response(
+            content=response.content,
             status_code=response.status_code,
-            headers={
-                "X-RateLimit-Limit": str(rate_limit_info["limit"]),
-                "X-RateLimit-Remaining": str(max(0, rate_limit_info["remaining"] - 1)),
-                "X-RateLimit-Reset": str(rate_limit_info["reset"])
-            }
+            headers=response_headers
         )
 
     except Exception as e:
