@@ -1,13 +1,12 @@
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Trash2, Globe, Code, Check, Edit2, X, Play, Copy,
-  BookmarkX, Bookmark, Key, ChevronDown, ChevronUp, List, Zap
+  Trash2, Globe, Code, Check, Edit2, X, Copy,
+  BookmarkX, Bookmark, Key
 } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
-import { AudioPlayer } from '../components/ui/AudioPlayer';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../hooks/useToast';
@@ -18,8 +17,6 @@ import { APICard } from '../components/dashboard/APICard';
 import { SavedAPICard } from '../components/dashboard/SavedAPICard';
 import { PublishModal } from '../components/dashboard/PublishModal';
 import { CodeModal } from '../components/dashboard/CodeModal';
-import { DynamicTestUI } from '../components/dashboard/DynamicTestUI';
-import { parseEndpointsFromCode, formatCurlExample, ParsedEndpoint } from '../lib/endpoints';
 
 interface SavedAPI {
   id: string;
@@ -54,7 +51,6 @@ export const Dashboard = () => {
   const [publishModalOpen, setPublishModalOpen] = useState(false);
   const [selectedApi, setSelectedApi] = useState<API | null>(null);
   const [publishLoading, setPublishLoading] = useState(false);
-  const [expandedApiId, setExpandedApiId] = useState<string | null>(null);
   const [editingApiId, setEditingApiId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [editAbout, setEditAbout] = useState('');
@@ -62,9 +58,6 @@ export const Dashboard = () => {
   const [codeModalOpen, setCodeModalOpen] = useState(false);
   const [viewingCode, setViewingCode] = useState<{ name: string; code: string } | null>(null);
   const [codeCopied, setCodeCopied] = useState(false);
-  const [testingEndpoint, setTestingEndpoint] = useState<string | null>(null);
-  const [testResults, setTestResults] = useState<any>(null);
-  const [testLoading, setTestLoading] = useState(false);
   const { profile, loading: authLoading } = useAuth();
   const { addToast } = useToast();
 
@@ -365,63 +358,6 @@ export const Dashboard = () => {
     }
   };
 
-  const testAPI = async (api: API, endpoint: ParsedEndpoint) => {
-    const endpointKey = `${api.id}-${endpoint.path}`;
-    setTestLoading(true);
-    setTestingEndpoint(endpointKey);
-    setTestResults(null);
-
-    try {
-      let url = api.endpoint_url + endpoint.path;
-
-      const options: RequestInit = {
-        method: endpoint.method,
-        headers: {
-          'Authorization': `Bearer ${api.api_key}`,
-          'Content-Type': 'application/json',
-        },
-      };
-
-      const queryParams = endpoint.parameters
-        .filter(p => p.type === 'query')
-        .map(p => `${p.name}=${p.name === 'duration' ? '3.0' : 'ambient'}`)
-        .join('&');
-
-      if (queryParams) {
-        url += `?${queryParams}`;
-      }
-
-      if (endpoint.method === 'POST' || endpoint.method === 'PUT') {
-        const bodyParams: any = {};
-        endpoint.parameters
-          .filter(p => p.type === 'body')
-          .forEach(p => {
-            if (p.name === 'duration') {
-              bodyParams[p.name] = 3.0;
-            } else if (p.name === 'category') {
-              bodyParams[p.name] = 'ambient';
-            } else {
-              bodyParams[p.name] = 'test';
-            }
-          });
-
-        if (Object.keys(bodyParams).length > 0) {
-          options.body = JSON.stringify(bodyParams);
-        }
-      }
-
-      const response = await fetch(url, options);
-      const data = await response.json();
-
-      setTestResults(data);
-      addToast('API test completed!', 'success');
-    } catch (error) {
-      console.error('Error testing API:', error);
-      addToast('Failed to test API', 'error');
-    } finally {
-      setTestLoading(false);
-    }
-  };
 
   return (
     <div className="p-8">
@@ -768,146 +704,6 @@ export const Dashboard = () => {
                         </>
                       )}
 
-                      {api.code_snapshot && (() => {
-                        const endpoints = parseEndpointsFromCode(api.code_snapshot);
-                        return endpoints.length > 0 && (
-                          <div className="mb-3">
-                            <button
-                              onClick={() => setExpandedApiId(expandedApiId === api.id ? null : api.id)}
-                              className="flex items-center gap-2 text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
-                            >
-                              <List className="w-4 h-4" />
-                              {endpoints.length} Endpoint{endpoints.length !== 1 ? 's' : ''} Available
-                              {expandedApiId === api.id ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                            </button>
-
-                            {expandedApiId === api.id && (
-                              <motion.div
-                                initial={{ opacity: 0, height: 0 }}
-                                animate={{ opacity: 1, height: 'auto' }}
-                                exit={{ opacity: 0, height: 0 }}
-                                className="mt-3 space-y-3 pl-6 border-l-2 border-blue-200 dark:border-blue-800"
-                              >
-                                {endpoints.map((endpoint, idx) => {
-                                  const curlExample = formatCurlExample(api.endpoint_url, endpoint, api.api_key || 'your-api-key');
-                                  return (
-                                    <div key={idx} className="text-xs border border-gray-200 dark:border-gray-700 rounded p-2">
-                                      <div className="flex items-center gap-2 mb-1">
-                                        <span className={`px-2 py-0.5 font-semibold rounded ${
-                                          endpoint.method === 'GET' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
-                                          endpoint.method === 'POST' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
-                                          endpoint.method === 'PUT' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
-                                          endpoint.method === 'DELETE' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
-                                          'bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-400'
-                                        }`}>
-                                          {endpoint.method}
-                                        </span>
-                                        <code className="font-mono text-gray-900 dark:text-gray-100">
-                                          {endpoint.path}
-                                        </code>
-                                      </div>
-                                      {endpoint.summary && (
-                                        <p className="text-gray-600 dark:text-gray-400 mb-2">
-                                          {endpoint.summary}
-                                        </p>
-                                      )}
-
-                                      {endpoint.parameters.length > 0 && (
-                                        <div className="mb-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded">
-                                          <p className="text-xs font-semibold text-blue-900 dark:text-blue-300 mb-1">Parameters:</p>
-                                          <div className="space-y-1">
-                                            {endpoint.parameters.map((param, paramIdx) => (
-                                              <div key={paramIdx} className="text-xs">
-                                                <code className="font-mono text-blue-700 dark:text-blue-400">
-                                                  {param.name}
-                                                </code>
-                                                <span className="text-gray-600 dark:text-gray-400">
-                                                  {' '}({param.type})
-                                                  {param.required && <span className="text-red-600 dark:text-red-400"> *required</span>}
-                                                </span>
-                                              </div>
-                                            ))}
-                                          </div>
-                                        </div>
-                                      )}
-
-                                      <div className="space-y-2">
-                                        <div className="bg-gray-900 dark:bg-black rounded p-2 relative group">
-                                          <pre className="text-xs text-gray-100 overflow-x-auto">
-                                            <code>{curlExample}</code>
-                                          </pre>
-                                          <button
-                                            onClick={() => {
-                                              navigator.clipboard.writeText(curlExample);
-                                              addToast('Copied to clipboard!', 'success');
-                                            }}
-                                            className="absolute top-2 right-2 p-1 bg-gray-800 hover:bg-gray-700 rounded opacity-0 group-hover:opacity-100 transition-opacity"
-                                            title="Copy to clipboard"
-                                          >
-                                            <Copy className="w-3 h-3 text-gray-300" />
-                                          </button>
-                                        </div>
-
-                                        <Button
-                                          size="sm"
-                                          onClick={() => testAPI(api, endpoint)}
-                                          disabled={testLoading && testingEndpoint === `${api.id}-${endpoint.path}`}
-                                          className="w-full"
-                                        >
-                                          <Play className="w-3 h-3 mr-2" />
-                                          {testLoading && testingEndpoint === `${api.id}-${endpoint.path}` ? 'Testing...' : 'Test Endpoint'}
-                                        </Button>
-
-                                        {testingEndpoint === `${api.id}-${endpoint.path}` && testResults && (
-                                          <div className="space-y-2">
-                                            {testResults.results && Array.isArray(testResults.results) ? (
-                                              testResults.results.slice(0, 3).map((sound: any, soundIdx: number) => (
-                                                <AudioPlayer
-                                                  key={soundIdx}
-                                                  src={sound.previews?.preview_hq_mp3 || sound.preview_url}
-                                                  title={sound.name}
-                                                  description={sound.description}
-                                                  duration={sound.duration}
-                                                />
-                                              ))
-                                            ) : (
-                                              <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded text-xs">
-                                                <pre className="text-gray-700 dark:text-gray-300 overflow-x-auto">
-                                                  {JSON.stringify(testResults, null, 2)}
-                                                </pre>
-                                              </div>
-                                            )}
-                                          </div>
-                                        )}
-                                      </div>
-                                    </div>
-                                  );
-                                })}
-
-                                {/* AI-Generated Dynamic Test UI */}
-                                <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-                                  <div className="flex items-center gap-2 mb-3">
-                                    <Zap className="w-4 h-4 text-purple-500" />
-                                    <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                                      Interactive API Tester
-                                    </h4>
-                                    <span className="text-xs px-2 py-0.5 bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400 rounded-full">
-                                      AI-Generated
-                                    </span>
-                                  </div>
-                                  <DynamicTestUI
-                                    apiId={api.id}
-                                    apiName={api.name}
-                                    apiUrl={api.endpoint_url}
-                                    apiKey={api.api_key || 'your-api-key'}
-                                    code={api.code_snapshot}
-                                  />
-                                </div>
-                              </motion.div>
-                            )}
-                          </div>
-                        );
-                      })()}
 
                       <div className="space-y-2">
                         <div>
