@@ -278,9 +278,14 @@ export const StreamingDynamicTestUI: React.FC<StreamingDynamicTestUIProps> = ({
 
   // Manual save component function
   const handleSaveComponent = useCallback(async () => {
-    if (!componentCode || compilationError) {
-      addToast('Cannot save: Component has errors', 'error');
+    if (!componentCode) {
+      addToast('No component code to save', 'error');
       return;
+    }
+
+    // Allow saving even if there's a compilation error - user might want to debug later
+    if (compilationError) {
+      console.warn('Saving component with compilation errors:', compilationError);
     }
 
     setIsSaving(true);
@@ -291,6 +296,7 @@ export const StreamingDynamicTestUI: React.FC<StreamingDynamicTestUIProps> = ({
         return;
       }
 
+      console.log('Saving component for API:', apiId);
       const response = await fetch(`${API_BASE_URL}/save-test-ui`, {
         method: 'POST',
         headers: {
@@ -304,7 +310,16 @@ export const StreamingDynamicTestUI: React.FC<StreamingDynamicTestUIProps> = ({
         }),
       });
 
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Save failed with status:', response.status, errorText);
+        addToast(`Failed to save: ${response.statusText}`, 'error');
+        return;
+      }
+
       const result = await response.json();
+      console.log('Save response:', result);
+
       if (result.success) {
         console.log('Component saved to database');
         setSavedComponentId(result.componentId);
@@ -315,7 +330,7 @@ export const StreamingDynamicTestUI: React.FC<StreamingDynamicTestUIProps> = ({
       }
     } catch (err) {
       console.error('Failed to save component:', err);
-      addToast('Failed to save component', 'error');
+      addToast(`Failed to save component: ${err instanceof Error ? err.message : 'Unknown error'}`, 'error');
     } finally {
       setIsSaving(false);
     }
