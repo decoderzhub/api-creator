@@ -783,12 +783,16 @@ CRITICAL REQUIREMENTS:
      };
      ```
 
-CRITICAL SYNTAX RULES:
-   - NEVER use unterminated strings - always close quotes properly
-   - Be extra careful with template literals and nested quotes
+CRITICAL SYNTAX RULES (MUST FOLLOW):
+   - EVERY string must be properly closed on the same line
+   - EVERY className=" MUST have a closing " before the >
+   - Be EXTREMELY careful with quotes - this is the #1 source of errors
+   - Use template literals with backticks ` for multi-line strings
    - Always escape quotes inside strings: use \' or \" when needed
-   - Double-check all JSX tags are properly closed
-   - Ensure all braces {{ }} are balanced
+   - Double-check EVERY line has balanced quotes before moving to next line
+   - All JSX tags must be properly closed
+   - All braces {{ }} must be balanced
+   - BEFORE finishing, scan through your entire component line-by-line and verify every quote is closed
 
 Return ONLY the component code starting with 'const CustomAPITest = ...' and ending with '};'. No explanations, no markdown code blocks."""
 
@@ -820,14 +824,30 @@ CRITICAL INSTRUCTIONS FOR FIXING:
    - Missing closing quotes in strings
    - Unescaped quotes inside strings (use \\' or \\")
    - Multi-line strings that need backticks or proper concatenation
-3. If you see syntax errors:
+3. If you see "Unexpected token" errors:
+   - This usually means a string wasn't closed properly on a PREVIOUS line
+   - Look at the line BEFORE the error line number
+   - Check for missing closing quotes, especially in className attributes
+   - Example BAD: className="border border-gray-200 rounded-lg p-4"> (missing opening quote)
+   - Example GOOD: className="border border-gray-200 rounded-lg p-4">
+4. If you see syntax errors:
    - Check all JSX tags are properly closed
    - Ensure all curly braces {{ }} are balanced
    - Make sure all parentheses and brackets match
-4. Common JSX mistakes to avoid:
+5. Common JSX mistakes to avoid:
    - Don't use unescaped quotes in className or other JSX attributes
+   - ALWAYS use double quotes for ALL className values
    - Use {{}} for JavaScript expressions in JSX, not single braces
    - Close all self-closing tags with />
+   - Never put JSX comments inside JSX elements (use {/* comment */})
+
+VALIDATION CHECKLIST - Go through each line:
+✓ Every opening quote has a closing quote on the same line
+✓ Every className=" has a matching closing "
+✓ Every opening tag < has a matching closing tag >
+✓ Every { has a matching }
+✓ Template literals use backticks ` not quotes
+✓ No bare strings without quotes
 
 Analyze the previous code and error, identify the EXACT issue, and generate a CORRECTED version that fixes it. Do not make the same mistake again."""
         elif request.improvementRequest and request.previousCode:
@@ -908,6 +928,30 @@ Generate a custom React testing component specifically designed for this API's f
                 lines = component_code.split('\n')
                 cleaned_lines = [line for line in lines if not line.strip().startswith('import ') and not line.strip().startswith('export ')]
                 component_code = '\n'.join(cleaned_lines).strip()
+
+                # Validate syntax - check for common issues
+                validation_passed = True
+                validation_errors = []
+
+                # Check for balanced quotes (simple heuristic)
+                for i, line in enumerate(component_code.split('\n'), 1):
+                    # Skip comments
+                    if line.strip().startswith('//'):
+                        continue
+
+                    # Count quotes (ignoring escaped quotes)
+                    line_clean = line.replace('\\"', '').replace("\\'", '')
+                    double_quotes = line_clean.count('"')
+
+                    # className should always have even quotes
+                    if 'className=' in line and double_quotes % 2 != 0:
+                        validation_passed = False
+                        validation_errors.append(f"Line {i}: Unbalanced quotes in className")
+                        logger.warning(f"Validation error on line {i}: {line}")
+
+                if not validation_passed:
+                    logger.warning(f"Generated code has validation errors: {validation_errors}")
+                    # Still send it - the frontend will catch it and retry
 
                 logger.info(f"Generated component code length: {len(component_code)} characters")
 
