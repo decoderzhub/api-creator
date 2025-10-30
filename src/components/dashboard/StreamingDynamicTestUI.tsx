@@ -134,9 +134,10 @@ export const StreamingDynamicTestUI: React.FC<StreamingDynamicTestUIProps> = ({
       // Fallback: If stream ended but we never got complete event, process accumulated code
       if (!receivedComplete && accumulatedCode.length > 0) {
         console.log('Processing accumulated code as fallback');
-        // Clean up the code
+        // Clean up the code - remove all markdown code fences
         let cleanedCode = accumulatedCode.trim();
-        cleanedCode = cleanedCode.replace(/```tsx|```typescript|```jsx|```/g, '').trim();
+        cleanedCode = cleanedCode.replace(/```(javascript|typescript|jsx|tsx|js|ts)?\s*\n?/g, '');
+        cleanedCode = cleanedCode.replace(/```/g, '').trim();
 
         // Remove import/export statements
         const lines = cleanedCode.split('\n');

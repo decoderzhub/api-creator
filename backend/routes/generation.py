@@ -855,7 +855,9 @@ Generate a custom React testing component specifically designed for this API's f
 
                 # Clean up the final code
                 component_code = component_code.strip()
-                component_code = component_code.replace("```tsx", "").replace("```typescript", "").replace("```jsx", "").replace("```", "").strip()
+                # Remove all code fence markers including language identifiers
+                component_code = re.sub(r'```(javascript|typescript|jsx|tsx|js|ts)?\s*\n?', '', component_code)
+                component_code = component_code.replace("```", "").strip()
 
                 # Extract only the component code
                 import re
