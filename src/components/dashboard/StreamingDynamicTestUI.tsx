@@ -31,8 +31,12 @@ export const StreamingDynamicTestUI: React.FC<StreamingDynamicTestUIProps> = ({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showCodeView, setShowCodeView] = useState(false);
+  const [autoRetry, setAutoRetry] = useState(true);
+  const [retryCount, setRetryCount] = useState(0);
+  const [lastError, setLastError] = useState<string | null>(null);
+  const maxRetries = 3;
 
-  const fetchTestUIStream = useCallback(async () => {
+  const fetchTestUIStream = useCallback(async (isRetry = false) => {
     try {
       setLoading(true);
       setIsStreaming(true);
@@ -46,18 +50,26 @@ export const StreamingDynamicTestUI: React.FC<StreamingDynamicTestUIProps> = ({
         throw new Error('Not authenticated');
       }
 
+      const requestBody: any = {
+        code,
+        apiName,
+        apiId,
+        endpointUrl: apiUrl,
+      };
+
+      // Include error context if this is a retry
+      if (isRetry && lastError) {
+        requestBody.previousError = lastError;
+        requestBody.retryAttempt = retryCount + 1;
+      }
+
       const response = await fetch(`${API_BASE_URL}/generate-test-ui-stream`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify({
-          code,
-          apiName,
-          apiId,
-          endpointUrl: apiUrl,
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       if (!response.ok) {
@@ -130,12 +142,14 @@ export const StreamingDynamicTestUI: React.FC<StreamingDynamicTestUIProps> = ({
       }
     } catch (err: any) {
       console.error('Error generating test UI:', err);
-      setError(err instanceof Error ? err.message : 'Failed to generate custom test interface');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to generate custom test interface';
+      setError(errorMessage);
+      setLastError(errorMessage);
       setIsStreaming(false);
     } finally {
       setLoading(false);
     }
-  }, [code, apiName, apiId, apiUrl]);
+  }, [code, apiName, apiId, apiUrl, lastError, retryCount]);
 
   useEffect(() => {
     fetchTestUIStream();
@@ -177,12 +191,24 @@ export const StreamingDynamicTestUI: React.FC<StreamingDynamicTestUIProps> = ({
     } catch (err: any) {
       console.error('Component compilation error:', err);
       console.error('Component code that failed:', componentCode.substring(0, 500));
-      setError(`Component Error: ${err.message}`);
+      const errorMessage = `Component Error: ${err.message}`;
+      setError(errorMessage);
+      setLastError(errorMessage);
+
+      // Auto-retry if enabled and under retry limit
+      if (autoRetry && retryCount < maxRetries) {
+        console.log(`Auto-retrying (${retryCount + 1}/${maxRetries})...`);
+        setTimeout(() => {
+          setRetryCount(retryCount + 1);
+          fetchTestUIStream(true);
+        }, 1000);
+      }
+
       return null;
     }
-  }, [componentCode, apiUrl, apiKey]);
+  }, [componentCode, apiUrl, apiKey, autoRetry, retryCount, fetchTestUIStream]);
 
-  if (error) {
+  if (error && (!autoRetry || retryCount >= maxRetries)) {
     return (
       <Card className="p-6">
         <div className="flex items-start gap-3 text-red-600 dark:text-red-400 mb-4">
@@ -190,12 +216,32 @@ export const StreamingDynamicTestUI: React.FC<StreamingDynamicTestUIProps> = ({
           <div className="flex-1">
             <p className="font-medium">Failed to generate test interface</p>
             <p className="text-sm mt-1 text-red-500 dark:text-red-300">{error}</p>
+            {retryCount > 0 && (
+              <p className="text-xs mt-2 text-gray-600 dark:text-gray-400">
+                Attempted {retryCount} {retryCount === 1 ? 'retry' : 'retries'}
+              </p>
+            )}
           </div>
         </div>
-        <Button onClick={fetchTestUIStream} variant="outline" size="sm">
-          <RefreshCw className="w-4 h-4 mr-2" />
-          Try Again
-        </Button>
+        <div className="flex items-center gap-3">
+          <Button onClick={() => {
+            setRetryCount(0);
+            setLastError(null);
+            fetchTestUIStream(false);
+          }} variant="outline" size="sm">
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Try Again
+          </Button>
+          <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+            <input
+              type="checkbox"
+              checked={autoRetry}
+              onChange={(e) => setAutoRetry(e.target.checked)}
+              className="rounded border-gray-300 dark:border-gray-600"
+            />
+            Auto-retry on error
+          </label>
+        </div>
       </Card>
     );
   }
@@ -226,6 +272,11 @@ export const StreamingDynamicTestUI: React.FC<StreamingDynamicTestUIProps> = ({
           <div className="text-center py-8">
             <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-4 text-blue-600" />
             <p className="text-gray-600 dark:text-gray-400">Processing component...</p>
+            {retryCount > 0 && (
+              <p className="text-xs mt-2 text-gray-500 dark:text-gray-500">
+                Retry attempt {retryCount}/{maxRetries}
+              </p>
+            )}
           </div>
         </Card>
       )}
@@ -270,12 +321,25 @@ export const StreamingDynamicTestUI: React.FC<StreamingDynamicTestUIProps> = ({
             )}
           </Card>
 
-          {/* Regenerate Button */}
-          <div className="flex justify-center pt-2">
-            <Button onClick={fetchTestUIStream} variant="outline">
+          {/* Regenerate Button and Settings */}
+          <div className="flex items-center justify-center gap-4 pt-2">
+            <Button onClick={() => {
+              setRetryCount(0);
+              setLastError(null);
+              fetchTestUIStream(false);
+            }} variant="outline">
               <RefreshCw className="w-4 h-4 mr-2" />
               Regenerate Interface
             </Button>
+            <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+              <input
+                type="checkbox"
+                checked={autoRetry}
+                onChange={(e) => setAutoRetry(e.target.checked)}
+                className="rounded border-gray-300 dark:border-gray-600"
+              />
+              Auto-retry on error
+            </label>
           </div>
         </>
       )}

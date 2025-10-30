@@ -41,6 +41,8 @@ class TestUIRequest(BaseModel):
     endpointUrl: str
     improvementRequest: str = None
     previousCode: str = None
+    previousError: str = None
+    retryAttempt: int = 0
 
 
 @router.post("/generate-api-code")
@@ -753,7 +755,28 @@ CRITICAL REQUIREMENTS:
 
 Return ONLY the component code starting with 'const CustomAPITest = ...' and ending with '};'. No explanations, no markdown code blocks."""
 
-        if request.improvementRequest and request.previousCode:
+        if request.previousError and request.retryAttempt > 0:
+            user_prompt = f"""API Name: {request.apiName}
+API ID: {request.apiId}
+Endpoint URL: {request.endpointUrl}
+
+FastAPI Code:
+{request.code}
+
+⚠️ PREVIOUS GENERATION FAILED WITH ERROR:
+{request.previousError}
+
+This is retry attempt {request.retryAttempt}/3. Please fix the error mentioned above.
+
+Common issues to fix:
+1. Unterminated string constants - Make sure ALL strings are properly closed with quotes
+2. Missing closing tags - Ensure all JSX tags are properly closed
+3. Unbalanced braces - Check that all {{ and }} are matched
+4. Syntax errors in JSX - Validate all JSX syntax carefully
+5. Escaped quotes - Use proper escaping for quotes within strings
+
+Generate a corrected version of the component that fixes the error. Pay special attention to the line number mentioned in the error."""
+        elif request.improvementRequest and request.previousCode:
             user_prompt = f"""API Name: {request.apiName}
 API ID: {request.apiId}
 Endpoint URL: {request.endpointUrl}
