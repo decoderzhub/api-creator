@@ -3,10 +3,12 @@ API Generation Routes
 Handles AI-powered API code generation
 """
 from fastapi import APIRouter, HTTPException, Depends
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 import anthropic
 import sys
 import os
+import json
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import get_settings
@@ -682,6 +684,170 @@ Generate a custom React testing component specifically designed for this API's f
             "componentCode": component_code,
             "language": "tsx"
         }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to generate test UI: {str(e)}")
+
+
+@router.post("/generate-test-ui-stream")
+async def generate_test_ui_stream(request: TestUIRequest, user_id: str = Depends(verify_token)):
+    """Generate custom React component for testing with streaming response"""
+    try:
+        if not settings.anthropic_api_key:
+            raise HTTPException(status_code=500, detail="Anthropic API key not configured")
+
+        client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+
+        system_prompt = """You are an expert React developer creating custom API testing interfaces.
+
+Analyze the FastAPI code and generate a React component that creates a PERFECT testing UI for this specific API.
+
+CRITICAL REQUIREMENTS:
+1. Parse the code to understand ALL endpoints, parameters, and requirements
+   - Look for @router.post(), @router.get(), etc. decorators to find endpoint paths
+   - Check function signatures for path parameters like {width}, {height}
+   - ANALYZE FUNCTION SIGNATURES CAREFULLY:
+     * If you see: async def func(file: UploadFile = File(...), params: SomeModel = None)
+     * This means file goes as file upload AND params must be sent as JSON string in FormData
+     * Example: formData.append('file', file); formData.append('params', JSON.stringify({...}));
+     * If you see: async def func(file: UploadFile = File(...), width: int, height: int)
+     * This means individual form fields: formData.append('width', width); formData.append('height', height);
+   - Identify whether parameters are in the path, query string, body, or form data
+   - For Pydantic models in function params, check the model definition to see all required fields
+   - CRITICAL URL CONSTRUCTION: The apiUrl provided does NOT have a trailing slash, so you MUST ensure proper slash handling
+   - ALWAYS ensure there is exactly ONE slash between apiUrl and the endpoint path
+   - WRONG: `${apiUrl}sounds/search/` (missing slash between apiUrl and 'sounds')
+   - RIGHT: `${apiUrl}/sounds/search/` (has slash between apiUrl and 'sounds')
+   - For path parameters, examples:
+     * If apiUrl = "https://api.com/abc123" and endpoint is "/resize/{width}/{height}", use: `${apiUrl}/resize/${width}/${height}`
+     * If @router.get("/sounds/search/"), use: `${apiUrl}/sounds/search/?query=...`
+     * If @router.get("/sounds/{sound_id}"), use: `${apiUrl}/sounds/${soundId}`
+
+2. Initialize ALL numeric state with actual numbers (not empty strings):
+   - WRONG: const [width, setWidth] = useState('');
+   - RIGHT: const [width, setWidth] = useState(100);
+   - Always provide sensible defaults for all parameters
+
+3. Create appropriate input controls for each parameter type:
+   - File uploads: <input type="file" accept="..." />
+   - Numbers: <input type="number" value={state} onChange={(e) => setState(parseInt(e.target.value) || 0)} />
+   - Text: <input type="text" />
+   - Booleans: <input type="checkbox" />
+   - Enums/choices: <select> dropdown
+   - JSON objects: <textarea> with validation
+   - ALWAYS parse number inputs with parseInt() or parseFloat() and provide fallback values
+
+4. For FILE UPLOADS - ANALYZE THE FUNCTION SIGNATURE:
+   - Add proper file input with drag-and-drop
+   - Show file preview (images, audio player, etc.)
+   - Display file size/type validation
+   - Use FormData() for submission
+   - CRITICAL: Include Authorization header even with FormData
+
+5. Visual enhancements:
+   - Use Tailwind CSS classes for styling
+   - CRITICAL: ALL input fields must have dark text: className="... text-gray-900"
+   - Add icons from lucide-react (available as LucideIcons.IconName)
+   - Show request/response tabs
+   - Copy button for results
+
+Return ONLY the component code starting with 'const CustomAPITest = ...' and ending with '};'. No explanations, no markdown code blocks."""
+
+        if request.improvementRequest and request.previousCode:
+            user_prompt = f"""API Name: {request.apiName}
+API ID: {request.apiId}
+Endpoint URL: {request.endpointUrl}
+
+FastAPI Code:
+{request.code}
+
+Previous Component Code:
+{request.previousCode}
+
+User's Improvement Request: {request.improvementRequest}
+
+Regenerate the test UI component with the requested improvements. Keep the same overall structure but apply the specific changes requested by the user."""
+        else:
+            user_prompt = f"""API Name: {request.apiName}
+API ID: {request.apiId}
+Endpoint URL: {request.endpointUrl}
+
+FastAPI Code:
+{request.code}
+
+Generate a custom React testing component specifically designed for this API's functionality."""
+
+        async def stream_generator():
+            try:
+                component_code = ""
+
+                with client.messages.stream(
+                    model=settings.llm_model,
+                    max_tokens=4096,
+                    messages=[
+                        {"role": "user", "content": f"{system_prompt}\\n\\n{user_prompt}"}
+                    ]
+                ) as stream:
+                    for text in stream.text_stream:
+                        component_code += text
+                        # Send each chunk as JSON
+                        yield f"data: {json.dumps({'type': 'chunk', 'content': text})}\n\n"
+
+                # Clean up the final code
+                component_code = component_code.strip()
+                component_code = component_code.replace("```tsx", "").replace("```typescript", "").replace("```jsx", "").replace("```", "").strip()
+
+                # Extract only the component code
+                import re
+                component_match = re.search(r'const\s+CustomAPITest\s*=', component_code, re.MULTILINE)
+                if component_match:
+                    component_code = component_code[component_match.start():]
+                    arrow_match = re.search(r'=>\s*\{', component_code)
+                    if arrow_match:
+                        brace_count = 0
+                        start_counting = False
+                        end_index = len(component_code)
+
+                        for i, char in enumerate(component_code):
+                            if not start_counting and i >= arrow_match.end() - 1:
+                                start_counting = True
+
+                            if start_counting:
+                                if char == '{':
+                                    brace_count += 1
+                                elif char == '}':
+                                    brace_count -= 1
+                                    if brace_count == 0:
+                                        end_index = i + 1
+                                        if end_index < len(component_code) and component_code[end_index] == ';':
+                                            end_index += 1
+                                        break
+
+                        component_code = component_code[:end_index].strip()
+
+                # Remove import/export statements
+                lines = component_code.split('\n')
+                cleaned_lines = [line for line in lines if not line.strip().startswith('import ') and not line.strip().startswith('export ')]
+                component_code = '\n'.join(cleaned_lines).strip()
+
+                logger.info(f"Generated component code length: {len(component_code)} characters")
+
+                # Send the final complete code
+                yield f"data: {json.dumps({'type': 'complete', 'componentCode': component_code, 'language': 'tsx'})}\n\n"
+
+            except Exception as e:
+                logger.error(f"Streaming error: {str(e)}")
+                yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+
+        return StreamingResponse(
+            stream_generator(),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "X-Accel-Buffering": "no"
+            }
+        )
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to generate test UI: {str(e)}")

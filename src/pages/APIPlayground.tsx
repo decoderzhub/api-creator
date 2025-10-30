@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Activity, AlertTriangle, Clock, Database, Server } from 'lucide-react';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
-import { DynamicTestUI } from '../components/dashboard/DynamicTestUI';
+import { StreamingDynamicTestUI } from '../components/dashboard/StreamingDynamicTestUI';
 import { supabase } from '../lib/supabase';
 import { API_BASE_URL } from '../lib/endpoints';
 
@@ -168,7 +168,7 @@ export default function APIPlayground() {
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           {/* Main Testing Area - Takes 3 columns */}
           <div className="lg:col-span-3 space-y-6">
-            <DynamicTestUI
+            <StreamingDynamicTestUI
               apiId={apiData.id}
               apiName={apiData.name}
               apiUrl={apiUrl}
