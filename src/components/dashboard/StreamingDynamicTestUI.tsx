@@ -113,7 +113,9 @@ export const StreamingDynamicTestUI: React.FC<StreamingDynamicTestUIProps> = ({
                   setIsStreaming(false);
                   setLoading(false);
                 } else if (data.type === 'error') {
-                  throw new Error(data.message);
+                  const errorMsg = data.message || 'Unknown error occurred';
+                  console.error('Stream error:', errorMsg);
+                  throw new Error(errorMsg);
                 }
               } catch (parseError) {
                 console.warn('Failed to parse SSE data:', parseError);
@@ -155,10 +157,56 @@ export const StreamingDynamicTestUI: React.FC<StreamingDynamicTestUIProps> = ({
     }
   }, [code, apiName, apiId, apiUrl]);
 
-  // Generate component on mount
+  // Load saved component or generate new one on mount
   useEffect(() => {
-    fetchTestUIStream();
-  }, [fetchTestUIStream]);
+    let isMounted = true;
+
+    const loadOrGenerate = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          if (isMounted) fetchTestUIStream();
+          return;
+        }
+
+        // Try to load saved component
+        const response = await fetch(`${API_BASE_URL}/load-test-ui/${apiId}`, {
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+          },
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          if (result.success && result.componentCode) {
+            // Load saved component
+            if (isMounted) {
+              setComponentCode(result.componentCode);
+              setFinalCode(result.componentCode);
+              setSavedComponentId(result.componentId);
+              setHasSavedComponent(true);
+              setLoading(false);
+              setIsStreaming(false);
+            }
+            return;
+          }
+        }
+
+        // No saved component, generate new one
+        if (isMounted) fetchTestUIStream();
+      } catch (err) {
+        console.error('Failed to load saved component:', err);
+        if (isMounted) fetchTestUIStream();
+      }
+    };
+
+    loadOrGenerate();
+
+    return () => {
+      isMounted = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [apiId]);
 
   const [compilationError, setCompilationError] = useState<string | null>(null);
 
@@ -375,13 +423,30 @@ export const StreamingDynamicTestUI: React.FC<StreamingDynamicTestUIProps> = ({
                   </div>
                 )}
               </div>
-              <Button
-                onClick={() => setShowCodeView(!showCodeView)}
-                variant="ghost"
-                size="sm"
-              >
-                {showCodeView ? 'Hide Code' : 'View Code'}
-              </Button>
+              <div className="flex items-center gap-2">
+                {hasSavedComponent && (
+                  <Button
+                    onClick={() => {
+                      setHasSavedComponent(false);
+                      setSavedComponentId(null);
+                      setRetryCount(0);
+                      fetchTestUIStream();
+                    }}
+                    variant="outline"
+                    size="sm"
+                  >
+                    <RefreshCw className="w-4 h-4 mr-2" />
+                    Regenerate
+                  </Button>
+                )}
+                <Button
+                  onClick={() => setShowCodeView(!showCodeView)}
+                  variant="ghost"
+                  size="sm"
+                >
+                  {showCodeView ? 'Hide Code' : 'View Code'}
+                </Button>
+              </div>
             </div>
 
             {/* Toggle between component and code view */}

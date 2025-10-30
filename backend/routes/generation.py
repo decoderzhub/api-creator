@@ -896,8 +896,15 @@ Generate a custom React testing component specifically designed for this API's f
                 yield f"data: {json.dumps({'type': 'complete', 'componentCode': component_code, 'language': 'tsx'})}\n\n"
 
             except Exception as e:
-                logger.error(f"Streaming error: {str(e)}")
-                yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+                error_msg = str(e)
+                logger.error(f"Streaming error: {error_msg}")
+
+                # Check for critical errors that need admin attention
+                if "credit balance is too low" in error_msg.lower() or "insufficient credits" in error_msg.lower():
+                    logger.critical(f"CRITICAL: Anthropic API credits exhausted! Error: {error_msg}")
+                    error_msg = "API credit balance is too low. Please contact support or check your API configuration."
+
+                yield f"data: {json.dumps({'type': 'error', 'message': error_msg})}\n\n"
 
         return StreamingResponse(
             stream_generator(),
