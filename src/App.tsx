@@ -20,6 +20,7 @@ import { Billing } from './pages/Billing';
 import Monitoring from './pages/Monitoring';
 import IntegrationHelper from './pages/IntegrationHelper';
 import { Admin } from './pages/Admin';
+import APIPlayground from './pages/APIPlayground';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth();
@@ -192,6 +193,14 @@ const AppRoutes = () => {
             <MainLayout>
               <Admin />
             </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/playground/:apiId"
+        element={
+          <ProtectedRoute>
+            <APIPlayground />
           </ProtectedRoute>
         }
       />

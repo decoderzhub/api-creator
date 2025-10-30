@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Trash2, ExternalLink, Copy, List, ChevronDown, ChevronUp, CreditCard as Edit2, Check, Code, Zap, Play } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Trash2, ExternalLink, Copy, List, ChevronDown, ChevronUp, CreditCard as Edit2, Check, Code, Zap, Play, Globe, FlaskConical } from 'lucide-react';
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
 import { API } from '../../lib/types';
@@ -45,6 +46,7 @@ export const APICard = ({
   onPublish,
   onCopyToClipboard,
 }: APICardProps) => {
+  const navigate = useNavigate();
   const endpoints = api.code_snapshot ? parseEndpointsFromCode(api.code_snapshot) : [];
 
   return (
@@ -224,21 +226,29 @@ export const APICard = ({
         </div>
       </div>
 
-      <div className="flex gap-2 flex-wrap">
-        {canViewCode && api.code_snapshot && (
-          <Button size="sm" variant="outline" onClick={() => onViewCode(api)}>
-            <Code className="w-4 h-4 mr-2" />
-            View Code
+      <div className="flex items-center justify-between gap-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+        <button
+          onClick={() => navigate(`/playground/${api.id}`)}
+          className="group flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-pink-500 to-pink-600 hover:from-pink-600 hover:to-pink-700 text-white rounded-lg transition-all duration-200 shadow-sm hover:shadow-md font-medium text-sm"
+        >
+          <FlaskConical className="w-4 h-4" />
+          <span>Open API Playground</span>
+          <ExternalLink className="w-3 h-3 opacity-70 group-hover:opacity-100 transition-opacity" />
+        </button>
+
+        <div className="flex gap-2">
+          {canViewCode && api.code_snapshot && (
+            <Button size="sm" variant="ghost" onClick={() => onViewCode(api)} title="View Code">
+              <Code className="w-4 h-4" />
+            </Button>
+          )}
+          <Button size="sm" variant="ghost" onClick={() => onPublish(api)} title={api.is_published ? 'Update Listing' : 'Publish to Marketplace'}>
+            <Globe className="w-4 h-4" />
           </Button>
-        )}
-        <Button size="sm" variant="outline" onClick={() => onPublish(api)}>
-          <Globe className="w-4 h-4 mr-2" />
-          {api.is_published ? 'Update Listing' : 'Publish to Marketplace'}
-        </Button>
-        <Button size="sm" variant="danger" onClick={() => onDelete(api.id)}>
-          <Trash2 className="w-4 h-4 mr-2" />
-          Delete
-        </Button>
+          <Button size="sm" variant="ghost" onClick={() => onDelete(api.id)} title="Delete API" className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300">
+            <Trash2 className="w-4 h-4" />
+          </Button>
+        </div>
       </div>
     </motion.div>
   );
