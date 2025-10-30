@@ -91,8 +91,8 @@ export const StreamingDynamicTestUI: React.FC<StreamingDynamicTestUIProps> = ({
       const reader = response.body?.getReader();
       const decoder = new TextDecoder();
       let accumulatedCode = '';
-
       let receivedComplete = false;
+      let buffer = '';
 
       if (reader) {
         while (true) {
@@ -102,13 +102,20 @@ export const StreamingDynamicTestUI: React.FC<StreamingDynamicTestUIProps> = ({
             break;
           }
 
-          const chunk = decoder.decode(value);
-          const lines = chunk.split('\n');
+          const chunk = decoder.decode(value, { stream: true });
+          buffer += chunk;
+          const lines = buffer.split('\n');
+
+          // Keep the last incomplete line in the buffer
+          buffer = lines.pop() || '';
 
           for (const line of lines) {
             if (line.startsWith('data: ')) {
               try {
-                const data = JSON.parse(line.slice(6));
+                const jsonStr = line.slice(6).trim();
+                if (!jsonStr) continue;
+
+                const data = JSON.parse(jsonStr);
 
                 if (data.type === 'chunk') {
                   accumulatedCode += data.content;
@@ -126,7 +133,7 @@ export const StreamingDynamicTestUI: React.FC<StreamingDynamicTestUIProps> = ({
                   throw new Error(errorMsg);
                 }
               } catch (parseError) {
-                console.warn('Failed to parse SSE data:', parseError);
+                console.warn('Failed to parse SSE data:', line.substring(0, 100), parseError);
               }
             }
           }
