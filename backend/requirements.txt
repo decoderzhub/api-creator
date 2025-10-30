@@ -12,5 +12,5 @@ sentry-sdk[fastapi]==2.18.0
 python-json-logger==2.0.7
 psutil==6.1.0
 stripe==11.1.0
-Pillow==10.1.0
-docker==7.1.0
+Pillow>=10.2.0
+docker>=7.0.0
