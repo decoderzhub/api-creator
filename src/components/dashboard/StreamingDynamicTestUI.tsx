@@ -155,6 +155,8 @@ export const StreamingDynamicTestUI: React.FC<StreamingDynamicTestUIProps> = ({
     fetchTestUIStream();
   }, [fetchTestUIStream]);
 
+  const [compilationError, setCompilationError] = useState<string | null>(null);
+
   const DynamicComponent = useMemo(() => {
     if (!componentCode) {
       console.log('No componentCode available yet');
@@ -179,6 +181,7 @@ export const StreamingDynamicTestUI: React.FC<StreamingDynamicTestUIProps> = ({
       `);
 
       console.log('Component evaluated successfully');
+      setCompilationError(null);
 
       return () => (
         <CustomAPITest
@@ -192,30 +195,36 @@ export const StreamingDynamicTestUI: React.FC<StreamingDynamicTestUIProps> = ({
       console.error('Component compilation error:', err);
       console.error('Component code that failed:', componentCode.substring(0, 500));
       const errorMessage = `Component Error: ${err.message}`;
-      setError(errorMessage);
-      setLastError(errorMessage);
-
-      // Auto-retry if enabled and under retry limit
-      if (autoRetry && retryCount < maxRetries) {
-        console.log(`Auto-retrying (${retryCount + 1}/${maxRetries})...`);
-        setTimeout(() => {
-          setRetryCount(retryCount + 1);
-          fetchTestUIStream(true);
-        }, 1000);
-      }
-
+      setCompilationError(errorMessage);
       return null;
     }
-  }, [componentCode, apiUrl, apiKey, autoRetry, retryCount, fetchTestUIStream]);
+  }, [componentCode, apiUrl, apiKey]);
 
-  if (error && (!autoRetry || retryCount >= maxRetries)) {
+  // Handle auto-retry in a separate effect
+  useEffect(() => {
+    if (compilationError && autoRetry && retryCount < maxRetries && !isStreaming) {
+      console.log(`Auto-retrying (${retryCount + 1}/${maxRetries}) due to error:`, compilationError);
+      setLastError(compilationError);
+
+      const timer = setTimeout(() => {
+        setRetryCount(retryCount + 1);
+        fetchTestUIStream(true);
+      }, 1500);
+
+      return () => clearTimeout(timer);
+    }
+  }, [compilationError, autoRetry, retryCount, isStreaming, fetchTestUIStream]);
+
+  const displayError = error || compilationError;
+
+  if (displayError && (!autoRetry || retryCount >= maxRetries)) {
     return (
       <Card className="p-6">
         <div className="flex items-start gap-3 text-red-600 dark:text-red-400 mb-4">
           <AlertCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />
           <div className="flex-1">
             <p className="font-medium">Failed to generate test interface</p>
-            <p className="text-sm mt-1 text-red-500 dark:text-red-300">{error}</p>
+            <p className="text-sm mt-1 text-red-500 dark:text-red-300">{displayError}</p>
             {retryCount > 0 && (
               <p className="text-xs mt-2 text-gray-600 dark:text-gray-400">
                 Attempted {retryCount} {retryCount === 1 ? 'retry' : 'retries'}
@@ -227,21 +236,52 @@ export const StreamingDynamicTestUI: React.FC<StreamingDynamicTestUIProps> = ({
           <Button onClick={() => {
             setRetryCount(0);
             setLastError(null);
+            setCompilationError(null);
+            setError(null);
             fetchTestUIStream(false);
           }} variant="outline" size="sm">
             <RefreshCw className="w-4 h-4 mr-2" />
             Try Again
           </Button>
-          <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+          <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 cursor-pointer">
             <input
               type="checkbox"
               checked={autoRetry}
               onChange={(e) => setAutoRetry(e.target.checked)}
-              className="rounded border-gray-300 dark:border-gray-600"
+              className="rounded border-gray-300 dark:border-gray-600 cursor-pointer"
             />
             Auto-retry on error
           </label>
         </div>
+      </Card>
+    );
+  }
+
+  // Show retry in progress
+  if (compilationError && autoRetry && retryCount < maxRetries) {
+    return (
+      <Card className="p-6">
+        <div className="flex items-start gap-3 text-orange-600 dark:text-orange-400 mb-4">
+          <RefreshCw className="w-5 h-5 mt-0.5 flex-shrink-0 animate-spin" />
+          <div className="flex-1">
+            <p className="font-medium">Retrying with error context...</p>
+            <p className="text-sm mt-1 text-gray-600 dark:text-gray-400">
+              Attempt {retryCount + 1}/{maxRetries}
+            </p>
+            <p className="text-xs mt-2 text-gray-500 dark:text-gray-500">
+              Previous error: {compilationError}
+            </p>
+          </div>
+        </div>
+        <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={autoRetry}
+            onChange={(e) => setAutoRetry(e.target.checked)}
+            className="rounded border-gray-300 dark:border-gray-600 cursor-pointer"
+          />
+          Auto-retry on error
+        </label>
       </Card>
     );
   }
