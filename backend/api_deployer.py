@@ -92,10 +92,22 @@ CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
 
                 host_port = self._get_port_for_api(api_id)
 
+                container_name = f"api-{api_id}"
+
+                try:
+                    existing_container = self.client.containers.get(container_name)
+                    logger.info(f"Removing existing container {container_name}")
+                    existing_container.stop()
+                    existing_container.remove()
+                except docker.errors.NotFound:
+                    pass
+                except Exception as e:
+                    logger.warning(f"Error removing existing container: {str(e)}")
+
                 logger.info(f"Starting container for API {api_id} on port {host_port}")
                 container = self.client.containers.run(
                     image.id,
-                    name=f"api-{api_id}",
+                    name=container_name,
                     detach=True,
                     ports={'8000/tcp': host_port},
                     mem_limit='512m',
