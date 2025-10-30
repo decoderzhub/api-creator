@@ -14,3 +14,4 @@ psutil==6.1.0
 stripe==11.1.0
 Pillow>=10.2.0
 docker>=7.0.0
+minio>=7.2.0
