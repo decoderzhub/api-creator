@@ -142,7 +142,12 @@ export const StreamingDynamicTestUI: React.FC<StreamingDynamicTestUIProps> = ({
   }, [fetchTestUIStream]);
 
   const DynamicComponent = useMemo(() => {
-    if (!componentCode) return null;
+    if (!componentCode) {
+      console.log('No componentCode available yet');
+      return null;
+    }
+
+    console.log('Attempting to compile component, code length:', componentCode.length);
 
     try {
       const transformedCode = Babel.transform(componentCode, {
@@ -150,12 +155,16 @@ export const StreamingDynamicTestUI: React.FC<StreamingDynamicTestUIProps> = ({
         filename: 'dynamic-component.tsx',
       }).code;
 
+      console.log('Babel transformation successful');
+
       const CustomAPITest = eval(`
         (function() {
           ${transformedCode}
           return CustomAPITest;
         })()
       `);
+
+      console.log('Component evaluated successfully');
 
       return () => (
         <CustomAPITest
@@ -167,6 +176,7 @@ export const StreamingDynamicTestUI: React.FC<StreamingDynamicTestUIProps> = ({
       );
     } catch (err: any) {
       console.error('Component compilation error:', err);
+      console.error('Component code that failed:', componentCode.substring(0, 500));
       setError(`Component Error: ${err.message}`);
       return null;
     }
@@ -190,6 +200,14 @@ export const StreamingDynamicTestUI: React.FC<StreamingDynamicTestUIProps> = ({
     );
   }
 
+  console.log('Render state:', {
+    isStreaming,
+    hasComponentCode: !!componentCode,
+    hasFinalCode: !!finalCode,
+    hasDynamicComponent: !!DynamicComponent,
+    loading
+  });
+
   return (
     <div className="space-y-4">
       {/* Show streaming code viewer ONLY during generation */}
@@ -202,8 +220,18 @@ export const StreamingDynamicTestUI: React.FC<StreamingDynamicTestUIProps> = ({
         />
       )}
 
+      {/* Show loading state */}
+      {!isStreaming && !finalCode && loading && (
+        <Card className="p-6">
+          <div className="text-center py-8">
+            <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-4 text-blue-600" />
+            <p className="text-gray-600 dark:text-gray-400">Processing component...</p>
+          </div>
+        </Card>
+      )}
+
       {/* Show interactive component after generation is complete */}
-      {DynamicComponent && !isStreaming && finalCode && (
+      {!isStreaming && finalCode && (
         <>
           <Card className="p-6">
             <div className="flex items-center justify-between mb-4 pb-4 border-b border-gray-200 dark:border-gray-700">
@@ -232,8 +260,13 @@ export const StreamingDynamicTestUI: React.FC<StreamingDynamicTestUIProps> = ({
                   language="tsx"
                 />
               </div>
-            ) : (
+            ) : DynamicComponent ? (
               <DynamicComponent />
+            ) : (
+              <div className="text-center py-8 text-gray-600 dark:text-gray-400">
+                <AlertCircle className="w-8 h-8 mx-auto mb-4" />
+                <p>Failed to compile component. Click "View Code" to see the generated code.</p>
+              </div>
             )}
           </Card>
 
