@@ -603,6 +603,15 @@ export const Dashboard = () => {
                     <div className="flex items-center gap-6 text-sm text-gray-600 dark:text-gray-400">
                       <span>Created: {new Date(savedApi.created_at).toLocaleDateString()}</span>
                     </div>
+                    <div className="flex justify-center mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                      <Button
+                        onClick={() => window.location.href = `/playground?api=${api.id}`}
+                        className="bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white"
+                      >
+                        <Code className="w-4 h-4 mr-2" />
+                        Test in API Playground
+                      </Button>
+                    </div>
                   </motion.div>
                 );
                 })}
@@ -854,6 +863,15 @@ export const Dashboard = () => {
                   <div className="flex items-center gap-6 text-sm text-gray-600 dark:text-gray-400">
                     <span>Calls: {api.usage_count.toLocaleString()}</span>
                     <span>Created: {new Date(api.created_at).toLocaleDateString()}</span>
+                  </div>
+                  <div className="flex justify-center mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                    <Button
+                      onClick={() => window.location.href = `/playground?api=${api.id}`}
+                      className="bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white"
+                    >
+                      <Code className="w-4 h-4 mr-2" />
+                      Test in API Playground
+                    </Button>
                   </div>
                 </motion.div>
               ))}
