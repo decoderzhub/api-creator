@@ -25,7 +25,7 @@ export const DynamicTestUI: React.FC<DynamicTestUIProps> = ({
 }) => {
   const [componentCode, setComponentCode] = useState<string>('');
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string>('');
+  const [error, setError] = useState<{message: string; troubleshooting?: string[]; stack_trace?: string} | null>(null);
   const [regenerateKey, setRegenerateKey] = useState(0);
   const [generationProgress, setGenerationProgress] = useState<string>('Initializing...');
   const [showChat, setShowChat] = useState(false);
@@ -36,7 +36,7 @@ export const DynamicTestUI: React.FC<DynamicTestUIProps> = ({
   const fetchTestUI = useCallback(async (improvementRequest?: string, previousCode?: string) => {
     try {
       setLoading(true);
-      setError('');
+      setError(null);
       setGenerationProgress('Authenticating...');
 
       console.log('Fetching test UI from:', `${API_BASE_URL}/generate-test-ui`);
@@ -72,7 +72,10 @@ export const DynamicTestUI: React.FC<DynamicTestUIProps> = ({
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
         console.error('API Error:', response.status, errorData);
-        throw new Error(errorData.detail || `HTTP ${response.status}: Failed to generate test UI`);
+        const error: any = new Error(errorData.message || errorData.detail || `HTTP ${response.status}: Failed to generate test UI`);
+        error.troubleshooting = errorData.troubleshooting;
+        error.stack_trace = errorData.stack_trace;
+        throw error;
       }
 
       setGenerationProgress('Compiling component...');
@@ -85,9 +88,13 @@ export const DynamicTestUI: React.FC<DynamicTestUIProps> = ({
 
       setGenerationProgress('Loading interface...');
       setComponentCode(data.componentCode);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error generating test UI:', err);
-      setError(err instanceof Error ? err.message : 'Failed to generate custom test interface');
+      setError({
+        message: err instanceof Error ? err.message : 'Failed to generate custom test interface',
+        troubleshooting: err?.troubleshooting,
+        stack_trace: err?.stack_trace
+      });
     } finally {
       setLoading(false);
     }
@@ -170,7 +177,9 @@ export const DynamicTestUI: React.FC<DynamicTestUIProps> = ({
     } catch (err) {
       console.error('Error creating dynamic component:', err);
       console.error('Component code that failed:', componentCode);
-      setError(`Failed to render component: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      setError({
+        message: `Failed to render component: ${err instanceof Error ? err.message : 'Unknown error'}`
+      });
       return null;
     }
   }, [componentCode, apiUrl, apiKey]);
@@ -203,12 +212,34 @@ export const DynamicTestUI: React.FC<DynamicTestUIProps> = ({
             <div className="flex-1">
               <p className="font-medium">Custom test interface unavailable</p>
               <p className="text-sm text-yellow-400/70 mt-1">
-                {error || 'The AI-generated component could not be rendered.'}
+                {error?.message || 'The AI-generated component could not be rendered.'}
               </p>
               {isConfigError && (
                 <p className="text-xs text-yellow-400/60 mt-2 italic">
                   Note: Dynamic test UI requires ANTHROPIC_API_KEY to be configured on the server.
                 </p>
+              )}
+              {error?.troubleshooting && error.troubleshooting.length > 0 && (
+                <div className="mt-3 p-3 bg-yellow-900/20 border border-yellow-600/30 rounded text-xs">
+                  <p className="font-semibold text-yellow-300 mb-2">💡 Troubleshooting Tips:</p>
+                  <ul className="space-y-1 text-yellow-400/80">
+                    {error.troubleshooting.map((tip, idx) => (
+                      <li key={idx} className="leading-relaxed">
+                        {tip}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {error?.stack_trace && (
+                <details className="mt-3 text-xs">
+                  <summary className="cursor-pointer text-yellow-400/60 hover:text-yellow-400">
+                    Show stack trace
+                  </summary>
+                  <pre className="mt-2 p-2 bg-black/30 rounded overflow-x-auto text-[10px] text-yellow-400/50">
+                    {error.stack_trace}
+                  </pre>
+                </details>
               )}
               <p className="text-xs text-yellow-400/60 mt-2">
                 Use the "Test Endpoint" buttons above or test via curl/Postman.

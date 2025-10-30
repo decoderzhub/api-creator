@@ -172,6 +172,59 @@ def health_check():
     }
 
 
+@app.get("/api/diagnostics/{api_id}")
+async def get_api_diagnostics(api_id: str):
+    """Get diagnostic information for a specific API"""
+    try:
+        # Check if API is deployed
+        is_deployed = api_id in api_deployer.api_containers
+
+        diagnostics = {
+            "api_id": api_id,
+            "is_deployed": is_deployed,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+
+        if is_deployed:
+            container_info = api_deployer.api_containers[api_id]
+            container = container_info['container']
+
+            try:
+                container.reload()
+                diagnostics["container_status"] = container.status
+                diagnostics["port"] = container_info['port']
+                diagnostics["image"] = container_info['image']
+
+                # Try to get container logs
+                try:
+                    logs = container.logs(tail=50).decode('utf-8')
+                    diagnostics["recent_logs"] = logs.split('\n')[-20:]  # Last 20 lines
+                except Exception as log_error:
+                    diagnostics["logs_error"] = str(log_error)
+
+            except Exception as e:
+                diagnostics["container_error"] = str(e)
+        else:
+            diagnostics["message"] = "API is not currently deployed"
+
+        # Get API info from database
+        try:
+            from supabase import create_client
+            supabase = create_client(settings.supabase_url, settings.supabase_service_role_key)
+            api_data = supabase.table("apis").select("name,status,requirements,created_at").eq("id", api_id).single().execute()
+            diagnostics["api_info"] = api_data.data
+        except Exception as db_error:
+            diagnostics["database_error"] = str(db_error)
+
+        return diagnostics
+
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={"error": "Failed to fetch diagnostics", "detail": str(e)}
+        )
+
+
 @app.get("/metrics")
 async def get_metrics(authorization: str = Header(None)):
     """Get system metrics (admin only)"""
@@ -519,11 +572,18 @@ async def proxy_to_user_api(
         )
 
     except Exception as e:
+        import traceback
+
+        error_type = type(e).__name__
+        error_message = str(e)
+        stack_trace = traceback.format_exc()
+
         logger.error(
             f"Error executing API {api_id}",
             extra={
                 "api_id": api_id,
-                "error": str(e),
+                "error": error_message,
+                "error_type": error_type,
                 "request_id": request_id
             },
             exc_info=True
@@ -539,9 +599,56 @@ async def proxy_to_user_api(
             request_size_bytes=0
         )
 
+        # Build detailed error response with troubleshooting tips
+        error_details = {
+            "error": "API Execution Error",
+            "error_type": error_type,
+            "message": error_message,
+            "request_id": request_id,
+            "troubleshooting": []
+        }
+
+        # Add specific troubleshooting based on error type
+        if "ConnectError" in error_type or "Connection" in error_message:
+            error_details["troubleshooting"].extend([
+                "The API container is not responding. This usually means:",
+                "1. The container crashed due to missing dependencies",
+                "2. The code has syntax errors or import failures",
+                "3. The container is still starting up (wait 10-15 seconds)",
+                "Check the backend logs for 'API deployed successfully' message",
+                "Verify all required Python packages are listed in requirements"
+            ])
+        elif "timeout" in error_message.lower():
+            error_details["troubleshooting"].extend([
+                "The API request timed out. This could mean:",
+                "1. The API endpoint is taking too long to process",
+                "2. The API is stuck in an infinite loop",
+                "3. Network issues between gateway and container",
+                "Consider optimizing the API code or increasing timeout limits"
+            ])
+        elif "ModuleNotFoundError" in error_type or "ImportError" in error_type:
+            error_details["troubleshooting"].extend([
+                "Missing Python dependency detected:",
+                "1. Add the missing package to the API's requirements field",
+                "2. The API will automatically redeploy with the new dependency",
+                "3. Common packages: Pillow (images), pandas (data), requests (HTTP)"
+            ])
+        else:
+            error_details["troubleshooting"].extend([
+                "An unexpected error occurred:",
+                "1. Check the backend logs for detailed error information",
+                "2. Verify the API code doesn't have syntax errors",
+                "3. Ensure all API endpoints are properly defined",
+                "4. Test the API code locally before deploying"
+            ])
+
+        # Add stack trace in development mode
+        if settings.environment != "production":
+            error_details["stack_trace"] = stack_trace
+
         return JSONResponse(
             status_code=500,
-            content={"error": "Internal API error", "detail": str(e)}
+            content=error_details
         )
 
 
