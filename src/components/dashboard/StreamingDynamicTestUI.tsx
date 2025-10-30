@@ -10,6 +10,8 @@ import { supabase } from '../../lib/supabase';
 import * as Babel from '@babel/standalone';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { useToast } from '../../hooks/useToast';
+import { Toast } from '../ui/Toast';
 
 interface StreamingDynamicTestUIProps {
   apiId: string;
@@ -38,6 +40,8 @@ export const StreamingDynamicTestUI: React.FC<StreamingDynamicTestUIProps> = ({
   const [lastError, setLastError] = useState<string | null>(null);
   const [savedComponentId, setSavedComponentId] = useState<string | null>(null);
   const [hasSavedComponent, setHasSavedComponent] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const { toasts, addToast, removeToast } = useToast();
   const maxRetries = 3;
 
   const fetchTestUIStream = useCallback(async (isRetry = false, errorContext: string | null = null, attemptNumber: number = 0) => {
@@ -255,41 +259,50 @@ export const StreamingDynamicTestUI: React.FC<StreamingDynamicTestUIProps> = ({
     }
   }, [componentCode, apiUrl, apiKey]);
 
-  // Auto-save component when successfully compiled
-  useEffect(() => {
-    const saveComponent = async () => {
-      if (componentCode && !compilationError && !isStreaming && DynamicComponent) {
-        try {
-          const { data: { session } } = await supabase.auth.getSession();
-          if (!session) return;
+  // Manual save component function
+  const handleSaveComponent = useCallback(async () => {
+    if (!componentCode || compilationError) {
+      addToast('Cannot save: Component has errors', 'error');
+      return;
+    }
 
-          const response = await fetch(`${API_BASE_URL}/save-test-ui`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${session.access_token}`,
-            },
-            body: JSON.stringify({
-              apiId,
-              componentCode,
-              codeSnapshot: code,
-            }),
-          });
-
-          const result = await response.json();
-          if (result.success) {
-            console.log('Component saved to database');
-            setSavedComponentId(result.componentId);
-            setHasSavedComponent(true);
-          }
-        } catch (err) {
-          console.error('Failed to save component:', err);
-        }
+    setIsSaving(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        addToast('Please login to save component', 'error');
+        return;
       }
-    };
 
-    saveComponent();
-  }, [componentCode, compilationError, isStreaming, DynamicComponent, apiId, code]);
+      const response = await fetch(`${API_BASE_URL}/save-test-ui`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          apiId,
+          componentCode,
+          codeSnapshot: code,
+        }),
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        console.log('Component saved to database');
+        setSavedComponentId(result.componentId);
+        setHasSavedComponent(true);
+        addToast('Test component saved successfully', 'success');
+      } else {
+        addToast('Failed to save component', 'error');
+      }
+    } catch (err) {
+      console.error('Failed to save component:', err);
+      addToast('Failed to save component', 'error');
+    } finally {
+      setIsSaving(false);
+    }
+  }, [componentCode, compilationError, apiId, code, addToast]);
 
   // Handle auto-retry in a separate effect
   useEffect(() => {
@@ -381,6 +394,18 @@ export const StreamingDynamicTestUI: React.FC<StreamingDynamicTestUIProps> = ({
 
   return (
     <div className="space-y-4">
+      {/* Toast Notifications */}
+      <div className="fixed top-4 right-4 z-50 space-y-2">
+        {toasts.map((toast) => (
+          <Toast
+            key={toast.id}
+            message={toast.message}
+            type={toast.type}
+            onClose={() => removeToast(toast.id)}
+          />
+        ))}
+      </div>
+
       {/* Show streaming code viewer ONLY during generation */}
       {isStreaming && (
         <StreamingCodeViewer
@@ -424,6 +449,15 @@ export const StreamingDynamicTestUI: React.FC<StreamingDynamicTestUIProps> = ({
                 )}
               </div>
               <div className="flex items-center gap-2">
+                <Button
+                  onClick={handleSaveComponent}
+                  variant="outline"
+                  size="sm"
+                  disabled={isSaving || !componentCode || !!compilationError}
+                >
+                  <Save className="w-4 h-4 mr-2" />
+                  {isSaving ? 'Saving...' : 'Save'}
+                </Button>
                 {hasSavedComponent && (
                   <Button
                     onClick={() => {
