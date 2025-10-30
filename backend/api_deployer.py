@@ -46,8 +46,18 @@ class APIDeployer:
             logger.info(f"Deploying API {api_id}")
 
             if api_id in self.api_containers:
-                logger.info(f"API {api_id} already deployed, returning existing port")
-                return self.api_containers[api_id]['port']
+                try:
+                    container = self.api_containers[api_id]['container']
+                    container.reload()
+                    if container.status == 'running':
+                        logger.info(f"API {api_id} already deployed and running, returning existing port")
+                        return self.api_containers[api_id]['port']
+                    else:
+                        logger.warning(f"API {api_id} container exists but is not running (status: {container.status}), redeploying")
+                        del self.api_containers[api_id]
+                except Exception as e:
+                    logger.warning(f"Error checking container status for API {api_id}: {str(e)}, redeploying")
+                    del self.api_containers[api_id]
 
             api_dir = Path(tempfile.mkdtemp(prefix=f"api_{api_id[:8]}_"))
 
@@ -124,6 +134,24 @@ CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
                     'port': host_port,
                     'image': image_tag
                 }
+
+                import asyncio
+                import httpx
+
+                logger.info(f"Waiting for API {api_id} to become healthy on port {host_port}")
+                max_retries = 30
+                for i in range(max_retries):
+                    try:
+                        async with httpx.AsyncClient(timeout=2.0) as client:
+                            response = await client.get(f"http://localhost:{host_port}/")
+                            if response.status_code in [200, 404]:
+                                logger.info(f"API {api_id} is healthy and responding")
+                                break
+                    except Exception:
+                        if i < max_retries - 1:
+                            await asyncio.sleep(0.5)
+                        else:
+                            logger.warning(f"API {api_id} deployed but health check timed out")
 
                 logger.info(f"API {api_id} deployed successfully on port {host_port}")
                 return host_port
