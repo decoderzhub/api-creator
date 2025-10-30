@@ -283,11 +283,6 @@ export const StreamingDynamicTestUI: React.FC<StreamingDynamicTestUIProps> = ({
       return;
     }
 
-    // Allow saving even if there's a compilation error - user might want to debug later
-    if (compilationError) {
-      console.warn('Saving component with compilation errors:', compilationError);
-    }
-
     setIsSaving(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -334,7 +329,7 @@ export const StreamingDynamicTestUI: React.FC<StreamingDynamicTestUIProps> = ({
     } finally {
       setIsSaving(false);
     }
-  }, [componentCode, compilationError, apiId, code, addToast]);
+  }, [componentCode, apiId, code, addToast]);
 
   // Handle auto-retry in a separate effect
   useEffect(() => {
@@ -486,7 +481,7 @@ export const StreamingDynamicTestUI: React.FC<StreamingDynamicTestUIProps> = ({
                   onClick={handleSaveComponent}
                   variant="outline"
                   size="sm"
-                  disabled={isSaving || !componentCode || !!compilationError}
+                  disabled={isSaving || !componentCode}
                 >
                   <Save className="w-4 h-4 mr-2" />
                   {isSaving ? 'Saving...' : 'Save'}
