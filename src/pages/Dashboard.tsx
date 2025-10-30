@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Trash2, Globe, Code, Check, Edit2, X, Copy,
-  BookmarkX, Bookmark, Key, Zap
+  BookmarkX, Bookmark, Key, Zap, ChevronDown, ChevronUp, List
 } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
@@ -17,6 +17,7 @@ import { APICard } from '../components/dashboard/APICard';
 import { SavedAPICard } from '../components/dashboard/SavedAPICard';
 import { PublishModal } from '../components/dashboard/PublishModal';
 import { CodeModal } from '../components/dashboard/CodeModal';
+import { parseEndpointsFromCode, formatCurlExample } from '../lib/endpoints';
 
 interface SavedAPI {
   id: string;
@@ -56,6 +57,7 @@ export const Dashboard = () => {
   const [editAbout, setEditAbout] = useState('');
   const [saveLoading, setSaveLoading] = useState(false);
   const [codeModalOpen, setCodeModalOpen] = useState(false);
+  const [expandedApiId, setExpandedApiId] = useState<string | null>(null);
   const [viewingCode, setViewingCode] = useState<{ name: string; code: string } | null>(null);
   const [codeCopied, setCodeCopied] = useState(false);
   const { profile, loading: authLoading } = useAuth();
@@ -420,6 +422,93 @@ export const Dashboard = () => {
                           </p>
                         )}
 
+                        {api.code_snapshot && (() => {
+                          const endpoints = parseEndpointsFromCode(api.code_snapshot);
+                          const apiKey = userApiKey || 'Generate API Key below';
+                          return endpoints.length > 0 && (
+                            <div className="mb-3">
+                              <button
+                                onClick={() => setExpandedApiId(expandedApiId === savedApi.id ? null : savedApi.id)}
+                                className="flex items-center gap-2 text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
+                              >
+                                <List className="w-4 h-4" />
+                                {endpoints.length} Endpoint{endpoints.length !== 1 ? 's' : ''} Available
+                                {expandedApiId === savedApi.id ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                              </button>
+
+                              {expandedApiId === savedApi.id && (
+                                <motion.div
+                                  initial={{ opacity: 0, height: 0 }}
+                                  animate={{ opacity: 1, height: 'auto' }}
+                                  exit={{ opacity: 0, height: 0 }}
+                                  className="mt-3 space-y-3 pl-6 border-l-2 border-blue-200 dark:border-blue-800"
+                                >
+                                  {endpoints.map((endpoint, idx) => {
+                                    const curlExample = formatCurlExample(api.endpoint_url, endpoint, apiKey);
+                                    return (
+                                      <div key={idx} className="text-xs border border-gray-200 dark:border-gray-700 rounded p-2">
+                                        <div className="flex items-center gap-2 mb-1">
+                                          <span className={`px-2 py-0.5 font-semibold rounded ${
+                                            endpoint.method === 'GET' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
+                                            endpoint.method === 'POST' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
+                                            endpoint.method === 'PUT' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
+                                            endpoint.method === 'DELETE' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
+                                            'bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-400'
+                                          }`}>
+                                            {endpoint.method}
+                                          </span>
+                                          <code className="font-mono text-gray-900 dark:text-gray-100">
+                                            {endpoint.path}
+                                          </code>
+                                        </div>
+                                        {endpoint.summary && (
+                                          <p className="text-gray-600 dark:text-gray-400 mb-2">
+                                            {endpoint.summary}
+                                          </p>
+                                        )}
+
+                                        {endpoint.parameters.length > 0 && (
+                                          <div className="mb-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded">
+                                            <p className="text-xs font-semibold text-blue-900 dark:text-blue-300 mb-1">Parameters:</p>
+                                            <div className="space-y-1">
+                                              {endpoint.parameters.map((param, paramIdx) => (
+                                                <div key={paramIdx} className="text-xs">
+                                                  <code className="font-mono text-blue-700 dark:text-blue-400">
+                                                    {param.name}
+                                                  </code>
+                                                  <span className="text-gray-600 dark:text-gray-400">
+                                                    {' '}({param.type})
+                                                    {param.required && <span className="text-red-600 dark:text-red-400"> *required</span>}
+                                                  </span>
+                                                </div>
+                                              ))}
+                                            </div>
+                                          </div>
+                                        )}
+
+                                        <div className="bg-gray-900 dark:bg-black rounded p-2 relative group">
+                                          <pre className="text-xs text-gray-100 overflow-x-auto">
+                                            <code>{curlExample}</code>
+                                          </pre>
+                                          <button
+                                            onClick={() => {
+                                              navigator.clipboard.writeText(curlExample);
+                                              addToast('Copied to clipboard!', 'success');
+                                            }}
+                                            className="absolute top-2 right-2 p-1 bg-gray-800 hover:bg-gray-700 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                                            title="Copy to clipboard"
+                                          >
+                                            <Copy className="w-3 h-3 text-gray-300" />
+                                          </button>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </motion.div>
+                              )}
+                            </div>
+                          );
+                        })()}
 
                         <div className="space-y-3 mb-4">
                           <div>
@@ -617,6 +706,92 @@ export const Dashboard = () => {
                         </>
                       )}
 
+                      {api.code_snapshot && (() => {
+                        const endpoints = parseEndpointsFromCode(api.code_snapshot);
+                        return endpoints.length > 0 && (
+                          <div className="mb-3">
+                            <button
+                              onClick={() => setExpandedApiId(expandedApiId === api.id ? null : api.id)}
+                              className="flex items-center gap-2 text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
+                            >
+                              <List className="w-4 h-4" />
+                              {endpoints.length} Endpoint{endpoints.length !== 1 ? 's' : ''} Available
+                              {expandedApiId === api.id ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                            </button>
+
+                            {expandedApiId === api.id && (
+                              <motion.div
+                                initial={{ opacity: 0, height: 0 }}
+                                animate={{ opacity: 1, height: 'auto' }}
+                                exit={{ opacity: 0, height: 0 }}
+                                className="mt-3 space-y-3 pl-6 border-l-2 border-blue-200 dark:border-blue-800"
+                              >
+                                {endpoints.map((endpoint, idx) => {
+                                  const curlExample = formatCurlExample(api.endpoint_url, endpoint, api.api_key || 'your-api-key');
+                                  return (
+                                    <div key={idx} className="text-xs border border-gray-200 dark:border-gray-700 rounded p-2">
+                                      <div className="flex items-center gap-2 mb-1">
+                                        <span className={`px-2 py-0.5 font-semibold rounded ${
+                                          endpoint.method === 'GET' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
+                                          endpoint.method === 'POST' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
+                                          endpoint.method === 'PUT' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
+                                          endpoint.method === 'DELETE' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
+                                          'bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-400'
+                                        }`}>
+                                          {endpoint.method}
+                                        </span>
+                                        <code className="font-mono text-gray-900 dark:text-gray-100">
+                                          {endpoint.path}
+                                        </code>
+                                      </div>
+                                      {endpoint.summary && (
+                                        <p className="text-gray-600 dark:text-gray-400 mb-2">
+                                          {endpoint.summary}
+                                        </p>
+                                      )}
+
+                                      {endpoint.parameters.length > 0 && (
+                                        <div className="mb-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded">
+                                          <p className="text-xs font-semibold text-blue-900 dark:text-blue-300 mb-1">Parameters:</p>
+                                          <div className="space-y-1">
+                                            {endpoint.parameters.map((param, paramIdx) => (
+                                              <div key={paramIdx} className="text-xs">
+                                                <code className="font-mono text-blue-700 dark:text-blue-400">
+                                                  {param.name}
+                                                </code>
+                                                <span className="text-gray-600 dark:text-gray-400">
+                                                  {' '}({param.type})
+                                                  {param.required && <span className="text-red-600 dark:text-red-400"> *required</span>}
+                                                </span>
+                                              </div>
+                                            ))}
+                                          </div>
+                                        </div>
+                                      )}
+
+                                      <div className="bg-gray-900 dark:bg-black rounded p-2 relative group">
+                                        <pre className="text-xs text-gray-100 overflow-x-auto">
+                                          <code>{curlExample}</code>
+                                        </pre>
+                                        <button
+                                          onClick={() => {
+                                            navigator.clipboard.writeText(curlExample);
+                                            addToast('Copied to clipboard!', 'success');
+                                          }}
+                                          className="absolute top-2 right-2 p-1 bg-gray-800 hover:bg-gray-700 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                                          title="Copy to clipboard"
+                                        >
+                                          <Copy className="w-3 h-3 text-gray-300" />
+                                        </button>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </motion.div>
+                            )}
+                          </div>
+                        );
+                      })()}
 
                       <div className="space-y-2">
                         <div>
