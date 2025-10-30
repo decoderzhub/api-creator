@@ -44,7 +44,7 @@ export const StreamingDynamicTestUI: React.FC<StreamingDynamicTestUIProps> = ({
   const { toasts, addToast, removeToast } = useToast();
   const maxRetries = 3;
 
-  const fetchTestUIStream = useCallback(async (isRetry = false, errorContext: string | null = null, attemptNumber: number = 0) => {
+  const fetchTestUIStream = useCallback(async (isRetry = false, errorContext: string | null = null, attemptNumber: number = 0, failedCode: string | null = null) => {
     try {
       setLoading(true);
       setIsStreaming(true);
@@ -69,6 +69,10 @@ export const StreamingDynamicTestUI: React.FC<StreamingDynamicTestUIProps> = ({
       if (isRetry && errorContext) {
         requestBody.previousError = errorContext;
         requestBody.retryAttempt = attemptNumber;
+        // Include the failed code so AI can see what went wrong
+        if (failedCode) {
+          requestBody.previousCode = failedCode;
+        }
       }
 
       const response = await fetch(`${API_BASE_URL}/generate-test-ui-stream`, {
@@ -326,12 +330,13 @@ export const StreamingDynamicTestUI: React.FC<StreamingDynamicTestUIProps> = ({
       const timer = setTimeout(() => {
         const nextRetry = retryCount + 1;
         setRetryCount(nextRetry);
-        fetchTestUIStream(true, compilationError, nextRetry);
+        // Pass the failed component code so AI can see what it generated
+        fetchTestUIStream(true, compilationError, nextRetry, componentCode);
       }, 1500);
 
       return () => clearTimeout(timer);
     }
-  }, [compilationError, autoRetry, retryCount, isStreaming, fetchTestUIStream]);
+  }, [compilationError, autoRetry, retryCount, isStreaming, fetchTestUIStream, componentCode]);
 
   const displayError = error || compilationError;
 

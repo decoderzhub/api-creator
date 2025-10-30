@@ -793,6 +793,15 @@ CRITICAL SYNTAX RULES:
 Return ONLY the component code starting with 'const CustomAPITest = ...' and ending with '};'. No explanations, no markdown code blocks."""
 
         if request.previousError and request.retryAttempt > 0:
+            previous_code_section = ""
+            if request.previousCode:
+                previous_code_section = f"""
+PREVIOUS FAILED CODE:
+```tsx
+{request.previousCode}
+```
+"""
+
             user_prompt = f"""API Name: {request.apiName}
 API ID: {request.apiId}
 Endpoint URL: {request.endpointUrl}
@@ -802,17 +811,25 @@ FastAPI Code:
 
 ⚠️ PREVIOUS GENERATION FAILED WITH ERROR:
 {request.previousError}
+{previous_code_section}
+This is retry attempt {request.retryAttempt}/3.
 
-This is retry attempt {request.retryAttempt}/3. Please fix the error mentioned above.
+CRITICAL INSTRUCTIONS FOR FIXING:
+1. Look at the error message carefully - it tells you the exact line number and issue
+2. If you see "Unterminated string constant", check for:
+   - Missing closing quotes in strings
+   - Unescaped quotes inside strings (use \\' or \\")
+   - Multi-line strings that need backticks or proper concatenation
+3. If you see syntax errors:
+   - Check all JSX tags are properly closed
+   - Ensure all curly braces {{ }} are balanced
+   - Make sure all parentheses and brackets match
+4. Common JSX mistakes to avoid:
+   - Don't use unescaped quotes in className or other JSX attributes
+   - Use {{}} for JavaScript expressions in JSX, not single braces
+   - Close all self-closing tags with />
 
-Common issues to fix:
-1. Unterminated string constants - Make sure ALL strings are properly closed with quotes
-2. Missing closing tags - Ensure all JSX tags are properly closed
-3. Unbalanced braces - Check that all {{ and }} are matched
-4. Syntax errors in JSX - Validate all JSX syntax carefully
-5. Escaped quotes - Use proper escaping for quotes within strings
-
-Generate a corrected version of the component that fixes the error. Pay special attention to the line number mentioned in the error."""
+Analyze the previous code and error, identify the EXACT issue, and generate a CORRECTED version that fixes it. Do not make the same mistake again."""
         elif request.improvementRequest and request.previousCode:
             user_prompt = f"""API Name: {request.apiName}
 API ID: {request.apiId}
