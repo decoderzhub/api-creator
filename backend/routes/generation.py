@@ -11,6 +11,7 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import get_settings
 from routes.auth import verify_token
+from logger import logger
 
 router = APIRouter()
 settings = get_settings()
@@ -555,15 +556,20 @@ FastAPI Code:
 
 Generate a custom React testing component specifically designed for this API's functionality."""
 
-        message = client.messages.create(
+        # Use streaming to ensure we get the complete response
+        component_code = ""
+
+        with client.messages.stream(
             model=settings.llm_model,
-            max_tokens=3000,
+            max_tokens=4096,
             messages=[
                 {"role": "user", "content": f"{system_prompt}\\n\\n{user_prompt}"}
             ]
-        )
+        ) as stream:
+            for text in stream.text_stream:
+                component_code += text
 
-        component_code = message.content[0].text.strip()
+        component_code = component_code.strip()
 
         # Clean up code blocks and remove any import/export statements
         component_code = component_code.replace("```tsx", "").replace("```typescript", "").replace("```jsx", "").replace("```", "").strip()
@@ -618,42 +624,42 @@ Generate a custom React testing component specifically designed for this API's f
                 cleaned_lines.append(line)
         component_code = '\n'.join(cleaned_lines).strip()
 
-        # Basic syntax validation - check for unterminated strings
+        # Log the component size for debugging
+        logger.info(f"Generated component code length: {len(component_code)} characters")
+
+        # Basic syntax validation - check for component completeness
         def validate_jsx_syntax(code):
-            """Basic check for common syntax errors"""
-            # Check for balanced quotes in className attributes
+            """Basic check for common syntax errors and completeness"""
             import re
 
-            # Find all className attributes
-            classname_pattern = r'className\s*=\s*["\']'
-            matches = list(re.finditer(classname_pattern, code))
+            # Check if component ends properly with };
+            if not code.strip().endswith('};'):
+                logger.warning("Component does not end with '};' - likely truncated")
+                return False
 
-            for match in matches:
-                start = match.end()
-                quote_char = code[match.end() - 1]
+            # Check for balanced braces
+            open_braces = code.count('{')
+            close_braces = code.count('}')
+            if open_braces != close_braces:
+                logger.warning(f"Unbalanced braces: {open_braces} open, {close_braces} close")
+                return False
 
-                # Find the closing quote
-                escaped = False
-                found_close = False
-                for i in range(start, min(start + 500, len(code))):
-                    if code[i] == '\\' and not escaped:
-                        escaped = True
-                        continue
-                    if code[i] == quote_char and not escaped:
-                        found_close = True
-                        break
-                    escaped = False
-
-                if not found_close:
-                    # Try to fix by adding closing quote before next tag or newline
-                    logger.warning(f"Found unterminated string at position {match.start()}")
-                    return False
+            # Check for unterminated JSX elements (basic check)
+            # Look for <span without closing or self-closing
+            span_opens = len(re.findall(r'<span[^>]*>', code))
+            span_closes = code.count('</span>')
+            if span_opens != span_closes:
+                logger.warning(f"Unbalanced span tags: {span_opens} open, {span_closes} close")
+                # Don't fail on this, just warn
 
             return True
 
         # Validate the generated code
-        if not validate_jsx_syntax(component_code):
-            logger.error("Generated component has syntax errors, regenerating...")
+        is_valid = validate_jsx_syntax(component_code)
+
+        if not is_valid:
+            logger.error("Generated component has syntax errors or is incomplete")
+            logger.error(f"Last 200 chars: {component_code[-200:]}")
             # Return a simple fallback component
             component_code = """const CustomAPITest = ({ apiUrl, apiKey }) => {
   const [loading, setLoading] = useState(false);
@@ -664,11 +670,13 @@ Generate a custom React testing component specifically designed for this API's f
     <div className="space-y-4 p-6 bg-white rounded-lg shadow">
       <div className="text-center">
         <p className="text-gray-700">Custom test interface generation failed.</p>
-        <p className="text-sm text-gray-500 mt-2">Please use the Test Endpoint buttons above.</p>
+        <p className="text-sm text-gray-500 mt-2">The AI generated an incomplete component. Please use the Test Endpoint buttons above.</p>
       </div>
     </div>
   );
 };"""
+        else:
+            logger.info("Component validation passed")
 
         return {
             "componentCode": component_code,
