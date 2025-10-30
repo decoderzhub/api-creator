@@ -47,6 +47,13 @@ class Settings(BaseSettings):
     stripe_pro_price_id: str = ""
     stripe_enterprise_price_id: str = ""
 
+    # MinIO Object Storage
+    minio_endpoint: str = "minio.systemd.diskstation.me"
+    minio_access_key: str = "admin"
+    minio_secret_key: str = ""
+    minio_public_url: str = "https://minio.systemd.diskstation.me"
+    minio_secure: bool = True
+
     class Config:
         env_file = ".env"
         case_sensitive = False
