@@ -380,6 +380,24 @@ async def generate_test_ui(request: TestUIRequest, user_id: str = Depends(verify
         if not settings.anthropic_api_key:
             raise HTTPException(status_code=500, detail="Anthropic API key not configured")
 
+        # Fetch API data from database to get actual endpoint information
+        from database import get_supabase_client
+        supabase = get_supabase_client()
+
+        api_data = supabase.table('apis').select('name, prompt, code_snapshot, endpoint_url').eq('id', request.apiId).execute()
+
+        api_info = ""
+        if api_data.data and len(api_data.data) > 0:
+            api = api_data.data[0]
+            api_info = f"""
+API Information from Database:
+- API Name: {api.get('name', 'Unknown')}
+- Original Prompt: {api.get('prompt', 'N/A')}
+- Endpoint Base URL: {api.get('endpoint_url', request.endpointUrl)}
+
+This information provides context about what this API was designed to do.
+"""
+
         client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
 
         system_prompt = """You are an expert React developer creating custom API testing interfaces.
@@ -547,7 +565,9 @@ CRITICAL REQUIREMENTS:
 Make it production-quality, beautiful, and intuitive."""
 
         if request.improvementRequest and request.previousCode:
-            user_prompt = f"""API Name: {request.apiName}
+            user_prompt = f"""{api_info}
+
+API Name: {request.apiName}
 API ID: {request.apiId}
 Endpoint URL: {request.endpointUrl}
 
@@ -561,14 +581,17 @@ User's Improvement Request: {request.improvementRequest}
 
 Regenerate the test UI component with the requested improvements. Keep the same overall structure but apply the specific changes requested by the user."""
         else:
-            user_prompt = f"""API Name: {request.apiName}
+            user_prompt = f"""{api_info}
+
+API Name: {request.apiName}
 API ID: {request.apiId}
 Endpoint URL: {request.endpointUrl}
 
 FastAPI Code:
 {request.code}
 
-Generate a custom React testing component specifically designed for this API's functionality."""
+Generate a custom React testing component specifically designed for this API's functionality.
+Use the API information above to understand the context and purpose of this API."""
 
         # Use streaming to ensure we get the complete response
         component_code = ""
@@ -707,6 +730,24 @@ async def generate_test_ui_stream(request: TestUIRequest, user_id: str = Depends
     try:
         if not settings.anthropic_api_key:
             raise HTTPException(status_code=500, detail="Anthropic API key not configured")
+
+        # Fetch API data from database to get actual endpoint information
+        from database import get_supabase_client
+        supabase = get_supabase_client()
+
+        api_data = supabase.table('apis').select('name, prompt, code_snapshot, endpoint_url').eq('id', request.apiId).execute()
+
+        api_info = ""
+        if api_data.data and len(api_data.data) > 0:
+            api = api_data.data[0]
+            api_info = f"""
+API Information from Database:
+- API Name: {api.get('name', 'Unknown')}
+- Original Prompt: {api.get('prompt', 'N/A')}
+- Endpoint Base URL: {api.get('endpoint_url', request.endpointUrl)}
+
+This information provides context about what this API was designed to do.
+"""
 
         client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
 
@@ -851,7 +892,9 @@ VALIDATION CHECKLIST - Go through each line:
 
 Analyze the previous code and error, identify the EXACT issue, and generate a CORRECTED version that fixes it. Do not make the same mistake again."""
         elif request.improvementRequest and request.previousCode:
-            user_prompt = f"""API Name: {request.apiName}
+            user_prompt = f"""{api_info}
+
+API Name: {request.apiName}
 API ID: {request.apiId}
 Endpoint URL: {request.endpointUrl}
 
@@ -865,14 +908,17 @@ User's Improvement Request: {request.improvementRequest}
 
 Regenerate the test UI component with the requested improvements. Keep the same overall structure but apply the specific changes requested by the user."""
         else:
-            user_prompt = f"""API Name: {request.apiName}
+            user_prompt = f"""{api_info}
+
+API Name: {request.apiName}
 API ID: {request.apiId}
 Endpoint URL: {request.endpointUrl}
 
 FastAPI Code:
 {request.code}
 
-Generate a custom React testing component specifically designed for this API's functionality."""
+Generate a custom React testing component specifically designed for this API's functionality.
+Use the API information above to understand the context and purpose of this API."""
 
         async def stream_generator():
             try:
