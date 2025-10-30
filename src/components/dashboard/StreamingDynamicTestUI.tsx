@@ -30,7 +30,7 @@ export const StreamingDynamicTestUI: React.FC<StreamingDynamicTestUIProps> = ({
   const [isStreaming, setIsStreaming] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [showCodeView, setShowCodeView] = useState(true);
+  const [showCodeView, setShowCodeView] = useState(false);
 
   const fetchTestUIStream = useCallback(async () => {
     try {
@@ -39,7 +39,7 @@ export const StreamingDynamicTestUI: React.FC<StreamingDynamicTestUIProps> = ({
       setError(null);
       setStreamedCode('');
       setFinalCode('');
-      setShowCodeView(true);
+      setShowCodeView(false);
 
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
@@ -162,21 +162,8 @@ export const StreamingDynamicTestUI: React.FC<StreamingDynamicTestUIProps> = ({
 
   return (
     <div className="space-y-4">
-      {/* Toggle View Button */}
-      {finalCode && (
-        <div className="flex justify-end">
-          <Button
-            onClick={() => setShowCodeView(!showCodeView)}
-            variant="outline"
-            size="sm"
-          >
-            {showCodeView ? 'Hide Code' : 'Show Code'}
-          </Button>
-        </div>
-      )}
-
-      {/* Streaming Code Viewer */}
-      {showCodeView && (
+      {/* Show streaming code viewer ONLY during generation */}
+      {isStreaming && (
         <StreamingCodeViewer
           isStreaming={isStreaming}
           streamedCode={streamedCode}
@@ -185,27 +172,49 @@ export const StreamingDynamicTestUI: React.FC<StreamingDynamicTestUIProps> = ({
         />
       )}
 
-      {/* Generated Component */}
-      {DynamicComponent && !showCodeView && (
-        <Card className="p-6">
-          <div className="flex items-center gap-2 mb-4 pb-4 border-b border-gray-200 dark:border-gray-700">
-            <Sparkles className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-              Interactive API Test Interface
-            </h3>
-          </div>
-          <DynamicComponent />
-        </Card>
-      )}
+      {/* Show interactive component after generation is complete */}
+      {DynamicComponent && !isStreaming && finalCode && (
+        <>
+          <Card className="p-6">
+            <div className="flex items-center justify-between mb-4 pb-4 border-b border-gray-200 dark:border-gray-700">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                  Interactive API Test Interface
+                </h3>
+              </div>
+              <Button
+                onClick={() => setShowCodeView(!showCodeView)}
+                variant="ghost"
+                size="sm"
+              >
+                {showCodeView ? 'Hide Code' : 'View Code'}
+              </Button>
+            </div>
 
-      {/* Regenerate Button */}
-      {finalCode && (
-        <div className="flex justify-center pt-2">
-          <Button onClick={fetchTestUIStream} variant="outline">
-            <RefreshCw className="w-4 h-4 mr-2" />
-            Regenerate Interface
-          </Button>
-        </div>
+            {/* Toggle between component and code view */}
+            {showCodeView ? (
+              <div className="mt-4">
+                <StreamingCodeViewer
+                  isStreaming={false}
+                  streamedCode=""
+                  finalCode={finalCode}
+                  language="tsx"
+                />
+              </div>
+            ) : (
+              <DynamicComponent />
+            )}
+          </Card>
+
+          {/* Regenerate Button */}
+          <div className="flex justify-center pt-2">
+            <Button onClick={fetchTestUIStream} variant="outline">
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Regenerate Interface
+            </Button>
+          </div>
+        </>
       )}
     </div>
   );
