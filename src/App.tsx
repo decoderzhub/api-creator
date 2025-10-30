@@ -21,6 +21,7 @@ import Monitoring from './pages/Monitoring';
 import IntegrationHelper from './pages/IntegrationHelper';
 import { Admin } from './pages/Admin';
 import APIPlayground from './pages/APIPlayground';
+import PlaygroundList from './pages/PlaygroundList';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth();
@@ -192,6 +193,16 @@ const AppRoutes = () => {
           <ProtectedRoute>
             <MainLayout>
               <Admin />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/playground"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <PlaygroundList />
             </MainLayout>
           </ProtectedRoute>
         }
