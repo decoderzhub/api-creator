@@ -202,7 +202,8 @@ export const DynamicTestUI: React.FC<DynamicTestUIProps> = ({
   }
 
   if (error || !DynamicComponent) {
-    const isConfigError = error?.includes('500') || error?.includes('not configured');
+    const errorMessage = error?.message || '';
+    const isConfigError = errorMessage.includes('500') || errorMessage.includes('not configured');
 
     return (
       <Card className="p-6 border-yellow-900/20 bg-yellow-950/20">
