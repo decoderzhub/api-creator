@@ -991,8 +991,8 @@ async def save_test_ui(request: SaveTestUIRequest, user_id: str = Depends(verify
         supabase = get_supabase_client()
 
         # Check if user owns this API
-        api_check = supabase.table('apis').select('user_id').eq('id', request.apiId).eq('user_id', user_id).maybeSingle().execute()
-        if not api_check.data:
+        api_check = supabase.table('apis').select('user_id').eq('id', request.apiId).eq('user_id', user_id).execute()
+        if not api_check.data or len(api_check.data) == 0:
             raise HTTPException(status_code=403, detail="Not authorized to save test UI for this API")
 
         # Deactivate any existing active components for this API
@@ -1024,23 +1024,24 @@ async def load_test_ui(api_id: str, user_id: str = Depends(verify_token)):
         supabase = get_supabase_client()
 
         # Check if user owns this API
-        api_check = supabase.table('apis').select('user_id').eq('id', api_id).eq('user_id', user_id).maybeSingle().execute()
-        if not api_check.data:
+        api_check = supabase.table('apis').select('user_id').eq('id', api_id).eq('user_id', user_id).execute()
+        if not api_check.data or len(api_check.data) == 0:
             raise HTTPException(status_code=403, detail="Not authorized to load test UI for this API")
 
         # Get the active component for this API
-        result = supabase.table('test_ui_components').select('*').eq('api_id', api_id).eq('user_id', user_id).eq('is_active', True).maybeSingle().execute()
+        result = supabase.table('test_ui_components').select('*').eq('api_id', api_id).eq('user_id', user_id).eq('is_active', True).execute()
 
-        if not result.data:
+        if not result.data or len(result.data) == 0:
             return {"success": False, "message": "No saved test UI found"}
 
+        component = result.data[0]
         return {
             "success": True,
-            "componentId": result.data['id'],
-            "componentCode": result.data['component_code'],
-            "codeSnapshot": result.data['code_snapshot'],
-            "createdAt": result.data['created_at'],
-            "updatedAt": result.data['updated_at']
+            "componentId": component['id'],
+            "componentCode": component['component_code'],
+            "codeSnapshot": component['code_snapshot'],
+            "createdAt": component['created_at'],
+            "updatedAt": component['updated_at']
         }
     except HTTPException:
         raise
