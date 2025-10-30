@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { AlertCircle, RefreshCw, Sparkles } from 'lucide-react';
+import { AlertCircle, RefreshCw, Sparkles, Save, Check } from 'lucide-react';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { StreamingCodeViewer } from '../ui/StreamingCodeViewer';
@@ -36,6 +36,8 @@ export const StreamingDynamicTestUI: React.FC<StreamingDynamicTestUIProps> = ({
   const [autoRetry, setAutoRetry] = useState(true);
   const [retryCount, setRetryCount] = useState(0);
   const [lastError, setLastError] = useState<string | null>(null);
+  const [savedComponentId, setSavedComponentId] = useState<string | null>(null);
+  const [hasSavedComponent, setHasSavedComponent] = useState(false);
   const maxRetries = 3;
 
   const fetchTestUIStream = useCallback(async (isRetry = false, errorContext: string | null = null, attemptNumber: number = 0) => {
@@ -153,9 +155,40 @@ export const StreamingDynamicTestUI: React.FC<StreamingDynamicTestUIProps> = ({
     }
   }, [code, apiName, apiId, apiUrl]);
 
+  // Load saved component on mount
   useEffect(() => {
-    fetchTestUIStream();
-  }, [fetchTestUIStream]);
+    const loadSavedComponent = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) return;
+
+        const response = await fetch(`${API_BASE_URL}/load-test-ui/${apiId}`, {
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+          },
+        });
+
+        const result = await response.json();
+        if (result.success && result.componentCode) {
+          console.log('Loaded saved component from database');
+          setComponentCode(result.componentCode);
+          setSavedComponentId(result.componentId);
+          setHasSavedComponent(true);
+          setLoading(false);
+          setIsStreaming(false);
+        } else {
+          // No saved component, generate new one
+          fetchTestUIStream();
+        }
+      } catch (err) {
+        console.error('Failed to load saved component:', err);
+        // Fall back to generating new one
+        fetchTestUIStream();
+      }
+    };
+
+    loadSavedComponent();
+  }, [apiId]);
 
   const [compilationError, setCompilationError] = useState<string | null>(null);
 
@@ -203,6 +236,42 @@ export const StreamingDynamicTestUI: React.FC<StreamingDynamicTestUIProps> = ({
       return null;
     }
   }, [componentCode, apiUrl, apiKey]);
+
+  // Auto-save component when successfully compiled
+  useEffect(() => {
+    const saveComponent = async () => {
+      if (componentCode && !compilationError && !isStreaming && DynamicComponent) {
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (!session) return;
+
+          const response = await fetch(`${API_BASE_URL}/save-test-ui`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${session.access_token}`,
+            },
+            body: JSON.stringify({
+              apiId,
+              componentCode,
+              codeSnapshot: code,
+            }),
+          });
+
+          const result = await response.json();
+          if (result.success) {
+            console.log('Component saved to database');
+            setSavedComponentId(result.componentId);
+            setHasSavedComponent(true);
+          }
+        } catch (err) {
+          console.error('Failed to save component:', err);
+        }
+      }
+    };
+
+    saveComponent();
+  }, [componentCode, compilationError, isStreaming, DynamicComponent, apiId, code]);
 
   // Handle auto-retry in a separate effect
   useEffect(() => {
@@ -324,11 +393,17 @@ export const StreamingDynamicTestUI: React.FC<StreamingDynamicTestUIProps> = ({
         <>
           <Card className="p-6">
             <div className="flex items-center justify-between mb-4 pb-4 border-b border-gray-200 dark:border-gray-700">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-3">
                 <Sparkles className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                   Interactive API Test Interface
                 </h3>
+                {hasSavedComponent && (
+                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs font-medium">
+                    <Check className="w-3.5 h-3.5" />
+                    Saved
+                  </div>
+                )}
               </div>
               <Button
                 onClick={() => setShowCodeView(!showCodeView)}

@@ -29,6 +29,16 @@ class ClarificationRequest(BaseModel):
     apiName: str
 
 
+class SaveTestUIRequest(BaseModel):
+    apiId: str
+    componentCode: str
+    codeSnapshot: str | None = None
+
+
+class LoadTestUIRequest(BaseModel):
+    apiId: str
+
+
 class DocumentationRequest(BaseModel):
     code: str
     apiName: str
@@ -901,3 +911,116 @@ Generate a custom React testing component specifically designed for this API's f
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to generate test UI: {str(e)}")
+
+
+@router.post("/save-test-ui")
+async def save_test_ui(request: SaveTestUIRequest, user_id: str = Depends(verify_token)):
+    """Save generated test UI component to database"""
+    try:
+        from database import supabase
+
+        # Check if user owns this API
+        api_check = supabase.table('apis').select('user_id').eq('id', request.apiId).eq('user_id', user_id).maybeSingle().execute()
+        if not api_check.data:
+            raise HTTPException(status_code=403, detail="Not authorized to save test UI for this API")
+
+        # Deactivate any existing active components for this API
+        supabase.table('test_ui_components').update({'is_active': False}).eq('api_id', request.apiId).eq('user_id', user_id).execute()
+
+        # Save the new component
+        result = supabase.table('test_ui_components').insert({
+            'api_id': request.apiId,
+            'user_id': user_id,
+            'component_code': request.componentCode,
+            'code_snapshot': request.codeSnapshot,
+            'is_active': True,
+            'generation_count': 1
+        }).execute()
+
+        return {"success": True, "componentId": result.data[0]['id']}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to save test UI: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to save test UI: {str(e)}")
+
+
+@router.get("/load-test-ui/{api_id}")
+async def load_test_ui(api_id: str, user_id: str = Depends(verify_token)):
+    """Load saved test UI component from database"""
+    try:
+        from database import supabase
+
+        # Check if user owns this API
+        api_check = supabase.table('apis').select('user_id').eq('id', api_id).eq('user_id', user_id).maybeSingle().execute()
+        if not api_check.data:
+            raise HTTPException(status_code=403, detail="Not authorized to load test UI for this API")
+
+        # Get the active component for this API
+        result = supabase.table('test_ui_components').select('*').eq('api_id', api_id).eq('user_id', user_id).eq('is_active', True).maybeSingle().execute()
+
+        if not result.data:
+            return {"success": False, "message": "No saved test UI found"}
+
+        return {
+            "success": True,
+            "componentId": result.data['id'],
+            "componentCode": result.data['component_code'],
+            "codeSnapshot": result.data['code_snapshot'],
+            "createdAt": result.data['created_at'],
+            "updatedAt": result.data['updated_at']
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to load test UI: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to load test UI: {str(e)}")
+
+
+@router.get("/list-test-ui/{api_id}")
+async def list_test_ui(api_id: str, user_id: str = Depends(verify_token)):
+    """List all saved test UI components for an API"""
+    try:
+        from database import supabase
+
+        # Check if user owns this API
+        api_check = supabase.table('apis').select('user_id').eq('id', api_id).eq('user_id', user_id).maybeSingle().execute()
+        if not api_check.data:
+            raise HTTPException(status_code=403, detail="Not authorized to list test UIs for this API")
+
+        # Get all components for this API
+        result = supabase.table('test_ui_components').select('id, is_active, generation_count, created_at, updated_at').eq('api_id', api_id).eq('user_id', user_id).order('created_at', desc=True).execute()
+
+        return {"success": True, "components": result.data}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to list test UIs: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to list test UIs: {str(e)}")
+
+
+@router.post("/activate-test-ui/{component_id}")
+async def activate_test_ui(component_id: str, user_id: str = Depends(verify_token)):
+    """Activate a specific saved test UI component"""
+    try:
+        from database import supabase
+
+        # Get the component and verify ownership
+        component = supabase.table('test_ui_components').select('api_id, user_id').eq('id', component_id).eq('user_id', user_id).maybeSingle().execute()
+        if not component.data:
+            raise HTTPException(status_code=404, detail="Test UI component not found")
+
+        api_id = component.data['api_id']
+
+        # Deactivate all components for this API
+        supabase.table('test_ui_components').update({'is_active': False}).eq('api_id', api_id).eq('user_id', user_id).execute()
+
+        # Activate the selected component
+        supabase.table('test_ui_components').update({'is_active': True}).eq('id', component_id).execute()
+
+        return {"success": True}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to activate test UI: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to activate test UI: {str(e)}")
