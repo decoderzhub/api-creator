@@ -68,10 +68,15 @@ export const StreamingDynamicTestUI: React.FC<StreamingDynamicTestUIProps> = ({
       const decoder = new TextDecoder();
       let accumulatedCode = '';
 
+      let receivedComplete = false;
+
       if (reader) {
         while (true) {
           const { done, value } = await reader.read();
-          if (done) break;
+          if (done) {
+            console.log('Stream completed, accumulated code length:', accumulatedCode.length);
+            break;
+          }
 
           const chunk = decoder.decode(value);
           const lines = chunk.split('\n');
@@ -85,9 +90,12 @@ export const StreamingDynamicTestUI: React.FC<StreamingDynamicTestUIProps> = ({
                   accumulatedCode += data.content;
                   setStreamedCode(accumulatedCode);
                 } else if (data.type === 'complete') {
+                  console.log('Received complete event, component code length:', data.componentCode?.length);
+                  receivedComplete = true;
                   setFinalCode(data.componentCode);
                   setComponentCode(data.componentCode);
                   setIsStreaming(false);
+                  setLoading(false);
                 } else if (data.type === 'error') {
                   throw new Error(data.message);
                 }
@@ -97,6 +105,28 @@ export const StreamingDynamicTestUI: React.FC<StreamingDynamicTestUIProps> = ({
             }
           }
         }
+      }
+
+      console.log('Reader finished, receivedComplete:', receivedComplete);
+
+      // Fallback: If stream ended but we never got complete event, process accumulated code
+      if (!receivedComplete && accumulatedCode.length > 0) {
+        console.log('Processing accumulated code as fallback');
+        // Clean up the code
+        let cleanedCode = accumulatedCode.trim();
+        cleanedCode = cleanedCode.replace(/```tsx|```typescript|```jsx|```/g, '').trim();
+
+        // Remove import/export statements
+        const lines = cleanedCode.split('\n');
+        const cleaned = lines.filter(line =>
+          !line.trim().startsWith('import ') &&
+          !line.trim().startsWith('export ')
+        ).join('\n').trim();
+
+        setFinalCode(cleaned);
+        setComponentCode(cleaned);
+        setIsStreaming(false);
+        setLoading(false);
       }
     } catch (err: any) {
       console.error('Error generating test UI:', err);
