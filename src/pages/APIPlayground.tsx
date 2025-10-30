@@ -66,15 +66,9 @@ export default function APIPlayground() {
       if (error) throw error;
       setApiData(data);
 
-      const { data: keyData } = await supabase
-        .from('api_keys')
-        .select('key')
-        .eq('api_id', apiId)
-        .eq('user_id', user.id)
-        .maybeSingle();
-
-      if (keyData) {
-        setApiKey(keyData.key);
+      // API key is already stored in the data
+      if (data.api_key) {
+        setApiKey(data.api_key);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load API');
