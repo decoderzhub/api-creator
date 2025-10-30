@@ -1,9 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Check, Code2, Loader2 } from 'lucide-react';
-import ReactMarkdown from 'react-markdown';
-import rehypeHighlight from 'rehype-highlight';
+import hljs from 'highlight.js/lib/core';
+import typescript from 'highlight.js/lib/languages/typescript';
 import 'highlight.js/styles/vs2015.css';
+
+// Register TypeScript/TSX language
+hljs.registerLanguage('typescript', typescript);
 
 interface StreamingCodeViewerProps {
   isStreaming: boolean;
@@ -19,7 +22,9 @@ export function StreamingCodeViewer({
   language = 'tsx'
 }: StreamingCodeViewerProps) {
   const codeRef = useRef<HTMLDivElement>(null);
+  const preRef = useRef<HTMLPreElement>(null);
   const [displayedCode, setDisplayedCode] = useState('');
+  const [highlightedCode, setHighlightedCode] = useState('');
 
   useEffect(() => {
     if (finalCode) {
@@ -29,11 +34,27 @@ export function StreamingCodeViewer({
     }
   }, [streamedCode, finalCode]);
 
+  // Highlight code as it updates
   useEffect(() => {
-    if (codeRef.current) {
-      codeRef.current.scrollTop = codeRef.current.scrollHeight;
+    if (displayedCode) {
+      try {
+        const highlighted = hljs.highlight(displayedCode, {
+          language: 'typescript',
+          ignoreIllegals: true
+        }).value;
+        setHighlightedCode(highlighted);
+      } catch (err) {
+        // If highlighting fails, use plain text
+        setHighlightedCode(displayedCode);
+      }
     }
   }, [displayedCode]);
+
+  useEffect(() => {
+    if (preRef.current) {
+      preRef.current.scrollTop = preRef.current.scrollHeight;
+    }
+  }, [highlightedCode]);
 
   const getStatusIndicator = () => {
     if (finalCode) {
@@ -62,7 +83,6 @@ export function StreamingCodeViewer({
   };
 
   const lineCount = displayedCode.split('\n').length;
-  const markdownCode = `\`\`\`${language}\n${displayedCode}\n\`\`\``;
 
   return (
     <div className="space-y-3">
@@ -87,33 +107,23 @@ export function StreamingCodeViewer({
         {displayedCode ? (
           <div
             ref={codeRef}
-            className="relative rounded-b-lg overflow-auto max-h-[600px]"
-            style={{ scrollBehavior: 'smooth' }}
+            className="relative rounded-b-lg overflow-hidden"
           >
-            <div className="prose prose-invert max-w-none text-xs">
-              <ReactMarkdown
-                rehypePlugins={[rehypeHighlight]}
-                components={{
-                  pre: ({ children }) => (
-                    <pre className="!bg-gray-900 !p-4 !m-0 rounded-b-lg overflow-x-auto !text-xs">
-                      {children}
-                    </pre>
-                  ),
-                  code: ({ children, className }) => (
-                    <code className={`${className} !text-xs`}>
-                      {children}
-                    </code>
-                  ),
-                }}
-              >
-                {markdownCode}
-              </ReactMarkdown>
-            </div>
+            <pre
+              ref={preRef}
+              className="bg-gray-900 p-4 overflow-auto max-h-[600px] text-xs leading-relaxed font-mono rounded-b-lg"
+              style={{ scrollBehavior: 'smooth' }}
+            >
+              <code
+                className="hljs language-typescript"
+                dangerouslySetInnerHTML={{ __html: highlightedCode }}
+              />
+            </pre>
 
             {/* Streaming Cursor */}
             {isStreaming && !finalCode && (
               <motion.div
-                className="absolute bottom-4 right-4 w-2 h-5 bg-blue-500"
+                className="absolute bottom-6 left-4 w-2 h-4 bg-blue-500"
                 animate={{ opacity: [1, 0] }}
                 transition={{ duration: 0.8, repeat: Infinity }}
               />
