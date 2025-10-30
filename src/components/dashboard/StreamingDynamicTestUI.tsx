@@ -157,12 +157,14 @@ export const StreamingDynamicTestUI: React.FC<StreamingDynamicTestUIProps> = ({
 
   // Load saved component on mount
   useEffect(() => {
+    let isMounted = true;
+
     const loadSavedComponent = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) {
           console.log('No session, generating new component');
-          fetchTestUIStream();
+          if (isMounted) fetchTestUIStream();
           return;
         }
 
@@ -174,31 +176,38 @@ export const StreamingDynamicTestUI: React.FC<StreamingDynamicTestUIProps> = ({
 
         if (!response.ok) {
           console.log('Failed to load saved component, generating new one');
-          fetchTestUIStream();
+          if (isMounted) fetchTestUIStream();
           return;
         }
 
         const result = await response.json();
         if (result.success && result.componentCode) {
           console.log('Loaded saved component from database');
-          setComponentCode(result.componentCode);
-          setFinalCode(result.componentCode);
-          setSavedComponentId(result.componentId);
-          setHasSavedComponent(true);
-          setLoading(false);
-          setIsStreaming(false);
+          if (isMounted) {
+            setComponentCode(result.componentCode);
+            setFinalCode(result.componentCode);
+            setSavedComponentId(result.componentId);
+            setHasSavedComponent(true);
+            setLoading(false);
+            setIsStreaming(false);
+          }
         } else {
           console.log('No saved component found, generating new one');
-          fetchTestUIStream();
+          if (isMounted) fetchTestUIStream();
         }
       } catch (err) {
         console.error('Failed to load saved component:', err);
-        fetchTestUIStream();
+        if (isMounted) fetchTestUIStream();
       }
     };
 
     loadSavedComponent();
-  }, [apiId, fetchTestUIStream]);
+
+    return () => {
+      isMounted = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [apiId]);
 
   const [compilationError, setCompilationError] = useState<string | null>(null);
 
