@@ -48,7 +48,7 @@ export default function APIPlayground() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
   const [apiKey, setApiKey] = useState('');
-  const [showDiagnostics, setShowDiagnostics] = useState(false);
+  const [showDiagnostics, setShowDiagnostics] = useState(true); // Changed to true to show by default
   const [originalPrompt, setOriginalPrompt] = useState('');
 
   useEffect(() => {
@@ -196,18 +196,6 @@ export default function APIPlayground() {
               }}
             />
 
-            {/* Manual Troubleshoot - Always visible for user-described errors */}
-            <ManualTroubleshoot
-              apiId={apiData.id}
-              apiName={apiData.name}
-              originalCode={apiData.code_snapshot}
-              originalPrompt={originalPrompt}
-              onFixApplied={() => {
-                fetchAPIData(true);
-                fetchDiagnostics();
-              }}
-            />
-
             <StreamingDynamicTestUI
               apiId={apiData.id}
               apiName={apiData.name}
@@ -305,7 +293,7 @@ export default function APIPlayground() {
                       Updated
                     </span>
                     <span className="text-gray-400">
-                      {new Date(diagnostics.timestamp).toLocaleTimeString()}
+                      {new Date(diagnostics.timestamp).toLocaleString()}
                     </span>
                   </div>
                 </div>
@@ -324,6 +312,18 @@ export default function APIPlayground() {
                 </div>
               )}
             </Card>
+
+            {/* Manual Troubleshoot - Moved to sidebar below Diagnostics */}
+            <ManualTroubleshoot
+              apiId={apiData.id}
+              apiName={apiData.name}
+              originalCode={apiData.code_snapshot}
+              originalPrompt={originalPrompt}
+              onFixApplied={() => {
+                fetchAPIData(true);
+                fetchDiagnostics();
+              }}
+            />
 
             {/* Quick Actions Card */}
             <Card className="p-4">
