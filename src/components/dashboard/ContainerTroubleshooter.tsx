@@ -88,11 +88,11 @@ export function ContainerTroubleshooter({
       // Success!
       setFixStatus('success');
 
-      // Wait for container to fully restart before refreshing
+      // Notify parent component
       if (onFixApplied) {
         setTimeout(() => {
           onFixApplied();
-        }, 5000); // Wait 5 seconds for container to stabilize
+        }, 2000);
       }
 
     } catch (error) {
@@ -128,9 +128,9 @@ export function ContainerTroubleshooter({
       case 'fixing':
         return 'AI is generating a fix...';
       case 'deploying':
-        return 'Deploying fixed code and rebuilding container... This may take 30-60 seconds.';
+        return 'Deploying fixed code...';
       case 'success':
-        return 'Fix applied! Container is restarting. Diagnostics will refresh in a moment.';
+        return 'Container fixed and redeployed successfully!';
       case 'error':
         return errorMessage || 'Failed to fix the container';
       default:

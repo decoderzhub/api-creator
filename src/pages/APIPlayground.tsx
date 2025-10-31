@@ -5,8 +5,6 @@ import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { StreamingDynamicTestUI } from '../components/dashboard/StreamingDynamicTestUI';
 import { ContainerTroubleshooter } from '../components/dashboard/ContainerTroubleshooter';
-import { ContainerControls } from '../components/dashboard/ContainerControls';
-import { ManualTroubleshoot } from '../components/dashboard/ManualTroubleshoot';
 import { supabase } from '../lib/supabase';
 import { API_BASE_URL } from '../lib/endpoints';
 
