@@ -5,8 +5,8 @@ services:
     image: minio/minio:latest
     container_name: minio-storage
     ports:
-      - "9119:9000"      # S3 API
-      - "9120:9001"      # Web Console
+      - "9000:9000"      # S3 API
+      - "9001:9001"      # Web Console
     environment:
       MINIO_ROOT_USER: admin
       MINIO_ROOT_PASSWORD: minio123
@@ -15,7 +15,7 @@ services:
     command: server /data --console-address ":9001"
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9119/minio/health/live"]
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
       interval: 30s
       timeout: 10s
       retries: 3

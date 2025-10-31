@@ -43,10 +43,9 @@ export default function APIPlayground() {
   const [apiData, setApiData] = useState<APIData | null>(null);
   const [diagnostics, setDiagnostics] = useState<DiagnosticsData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
   const [apiKey, setApiKey] = useState('');
-  const [showDiagnostics, setShowDiagnostics] = useState(true); // Changed to true to show by default
+  const [showDiagnostics, setShowDiagnostics] = useState(false);
   const [originalPrompt, setOriginalPrompt] = useState('');
 
   useEffect(() => {
@@ -56,13 +55,9 @@ export default function APIPlayground() {
     return () => clearInterval(interval);
   }, [apiId]);
 
-  const fetchAPIData = async (isRefresh = false) => {
+  const fetchAPIData = async () => {
     try {
-      if (isRefresh) {
-        setRefreshing(true);
-      } else {
-        setLoading(true);
-      }
+      setLoading(true);
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
@@ -85,7 +80,6 @@ export default function APIPlayground() {
       setError(err instanceof Error ? err.message : 'Failed to load API');
     } finally {
       setLoading(false);
-      setRefreshing(false);
     }
   };
 
@@ -135,12 +129,6 @@ export default function APIPlayground() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
-      {refreshing && (
-        <div className="fixed top-4 right-4 z-50 bg-blue-500 text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-2">
-          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-          <span className="text-sm">Refreshing API data...</span>
-        </div>
-      )}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">
@@ -189,7 +177,7 @@ export default function APIPlayground() {
               originalPrompt={originalPrompt}
               containerStatus={diagnostics?.container_status}
               onFixApplied={() => {
-                fetchAPIData(true);
+                fetchAPIData();
                 fetchDiagnostics();
               }}
             />
@@ -205,16 +193,6 @@ export default function APIPlayground() {
 
           {/* Sidebar - Takes 1 column */}
           <div className="lg:col-span-1 space-y-6">
-            {/* Container Controls Card */}
-            <ContainerControls
-              apiId={apiData.id}
-              containerStatus={diagnostics?.container_status}
-              onContainerUpdate={() => {
-                fetchAPIData(true);
-                fetchDiagnostics();
-              }}
-            />
-
             {/* API Info Card */}
             <Card className="p-4">
               <h3 className="text-sm font-semibold text-gray-300 mb-3 flex items-center gap-2">
@@ -291,7 +269,7 @@ export default function APIPlayground() {
                       Updated
                     </span>
                     <span className="text-gray-400">
-                      {new Date(diagnostics.timestamp).toLocaleString()}
+                      {new Date(diagnostics.timestamp).toLocaleTimeString()}
                     </span>
                   </div>
                 </div>
@@ -310,18 +288,6 @@ export default function APIPlayground() {
                 </div>
               )}
             </Card>
-
-            {/* Manual Troubleshoot - Moved to sidebar below Diagnostics */}
-            <ManualTroubleshoot
-              apiId={apiData.id}
-              apiName={apiData.name}
-              originalCode={apiData.code_snapshot}
-              originalPrompt={originalPrompt}
-              onFixApplied={() => {
-                fetchAPIData(true);
-                fetchDiagnostics();
-              }}
-            />
 
             {/* Quick Actions Card */}
             <Card className="p-4">
