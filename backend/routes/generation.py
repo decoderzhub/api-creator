@@ -210,7 +210,22 @@ Requirements:
       * Return processed images as base64-encoded strings or file responses
       * Example operations: resize, thumbnail, crop, rotate, convert formats, apply filters
 
-13. DOCSTRING FORMAT (include in every endpoint):
+13. URLS AND HOSTNAMES:
+    - CRITICAL: NEVER hardcode localhost URLs in response data
+    - Get public hostname from environment: PUBLIC_HOSTNAME = os.getenv("PUBLIC_HOSTNAME", "localhost:8000")
+    - Get API ID from environment: API_ID = os.getenv("API_ID", "")
+    - When returning URLs, construct them as: f"https://{PUBLIC_HOSTNAME}/run/{API_ID}/your-path"
+    - Example for MinIO URLs: Use MINIO_PUBLIC_URL from environment, not localhost
+    - Example for API endpoints in responses:
+      ```python
+      import os
+      PUBLIC_HOSTNAME = os.getenv("PUBLIC_HOSTNAME", "localhost:8000")
+      API_ID = os.getenv("API_ID", "")
+      base_url = f"https://{PUBLIC_HOSTNAME}/run/{API_ID}"
+      download_url = f"{base_url}/uploads/{filename}"
+      ```
+
+14. DOCSTRING FORMAT (include in every endpoint):
     \"\"\"
     Brief description of what this endpoint does.
 

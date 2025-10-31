@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     admin_api_key: str = "admin-secret-key-change-in-production"
     gateway_host: str = "0.0.0.0"
     gateway_port: int = 8000
+    public_hostname: str = "api-creator.systemd.diskstation.me"
 
     # Redis (optional, for caching)
     redis_url: str = "redis://localhost:6379"

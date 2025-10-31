@@ -134,6 +134,8 @@ CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
                         'MINIO_PUBLIC_URL': settings.minio_public_url,
                         'MINIO_SECURE': str(settings.minio_secure).lower(),
                         'FREESOUND_API_KEY': settings.freesound_api_key,
+                        'PUBLIC_HOSTNAME': settings.public_hostname,
+                        'API_ID': api_id,
                     },
                     labels={
                         'app': 'api-builder',
