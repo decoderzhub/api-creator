@@ -17,7 +17,7 @@ class DeployAPIRequest(BaseModel):
 
 @router.post("/deploy-api")
 async def deploy_api(request: DeployAPIRequest, user_id: str = Depends(verify_token), req: Request = None):
-    """Deploy an API by updating its status to active and load it into memory"""
+    """Deploy an API by rebuilding its Docker container with latest code and updating status"""
     try:
         supabase = get_supabase_client()
         response = supabase.table("apis").select("*").eq("id", request.apiId).eq("user_id", user_id).execute()
@@ -25,6 +25,21 @@ async def deploy_api(request: DeployAPIRequest, user_id: str = Depends(verify_to
         if not response.data:
             raise HTTPException(status_code=404, detail="API not found")
 
+        api_data = response.data[0]
+        code = api_data.get("code_snapshot")
+        requirements = api_data.get("requirements")
+
+        if not code:
+            raise HTTPException(status_code=400, detail="API has no code to deploy")
+
+        # Deploy the API using the deployer (rebuild container with latest code)
+        if req and hasattr(req.app.state, 'api_deployer'):
+            api_deployer = req.app.state.api_deployer
+            port = await api_deployer.deploy_api(request.apiId, code, requirements)
+        else:
+            raise HTTPException(status_code=500, detail="API deployer not available")
+
+        # Update status to active
         supabase.table("apis").update({
             "status": "active"
         }).eq("id", request.apiId).execute()
@@ -40,7 +55,8 @@ async def deploy_api(request: DeployAPIRequest, user_id: str = Depends(verify_to
             "success": True,
             "apiId": request.apiId,
             "status": "active",
-            "message": "API deployed and loaded successfully"
+            "port": port,
+            "message": "API deployed successfully with latest code"
         }
 
     except HTTPException:
