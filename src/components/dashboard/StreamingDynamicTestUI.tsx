@@ -41,10 +41,12 @@ export const StreamingDynamicTestUI: React.FC<StreamingDynamicTestUIProps> = ({
   const [savedComponentId, setSavedComponentId] = useState<string | null>(null);
   const [hasSavedComponent, setHasSavedComponent] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [showImprovementBox, setShowImprovementBox] = useState(false);
+  const [improvementRequest, setImprovementRequest] = useState('');
   const { toasts, addToast, removeToast } = useToast();
   const maxRetries = 3;
 
-  const fetchTestUIStream = useCallback(async (isRetry = false, errorContext: string | null = null, attemptNumber: number = 0, failedCode: string | null = null) => {
+  const fetchTestUIStream = useCallback(async (isRetry = false, errorContext: string | null = null, attemptNumber: number = 0, failedCode: string | null = null, improvementReq: string | null = null) => {
     try {
       setLoading(true);
       setIsStreaming(true);
@@ -64,6 +66,12 @@ export const StreamingDynamicTestUI: React.FC<StreamingDynamicTestUIProps> = ({
         apiId,
         endpointUrl: apiUrl,
       };
+
+      // Include improvement request if provided
+      if (improvementReq && improvementReq.trim()) {
+        requestBody.improvementRequest = improvementReq.trim();
+        requestBody.previousCode = componentCode || finalCode;
+      }
 
       // Include error context if this is a retry
       if (isRetry && errorContext) {
@@ -171,7 +179,7 @@ export const StreamingDynamicTestUI: React.FC<StreamingDynamicTestUIProps> = ({
     } finally {
       setLoading(false);
     }
-  }, [code, apiName, apiId, apiUrl]);
+  }, [code, apiName, apiId, apiUrl, componentCode, finalCode]);
 
   // Load saved component or generate new one on mount
   useEffect(() => {
@@ -539,24 +547,79 @@ export const StreamingDynamicTestUI: React.FC<StreamingDynamicTestUIProps> = ({
           </Card>
 
           {/* Regenerate Button and Settings */}
-          <div className="flex items-center justify-center gap-4 pt-2">
-            <Button onClick={() => {
-              setRetryCount(0);
-              setLastError(null);
-              fetchTestUIStream(false, null, 0);
-            }} variant="outline">
-              <RefreshCw className="w-4 h-4 mr-2" />
-              Regenerate Interface
-            </Button>
-            <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-              <input
-                type="checkbox"
-                checked={autoRetry}
-                onChange={(e) => setAutoRetry(e.target.checked)}
-                className="rounded border-gray-300 dark:border-gray-600"
-              />
-              Auto-retry on error
-            </label>
+          <div className="space-y-3 pt-2">
+            <div className="flex items-center justify-center gap-4">
+              <Button onClick={() => {
+                setRetryCount(0);
+                setLastError(null);
+                fetchTestUIStream(false, null, 0);
+              }} variant="outline">
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Regenerate Interface
+              </Button>
+              <Button
+                onClick={() => setShowImprovementBox(!showImprovementBox)}
+                variant="outline"
+                className="flex items-center gap-2"
+              >
+                <Sparkles className="w-4 h-4" />
+                {showImprovementBox ? 'Cancel' : 'Improve Component'}
+              </Button>
+              <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                <input
+                  type="checkbox"
+                  checked={autoRetry}
+                  onChange={(e) => setAutoRetry(e.target.checked)}
+                  className="rounded border-gray-300 dark:border-gray-600"
+                />
+                Auto-retry on error
+              </label>
+            </div>
+
+            {/* Improvement Request Box */}
+            {showImprovementBox && (
+              <Card className="p-4 bg-purple-500/5 border-purple-500/20">
+                <h4 className="text-sm font-semibold text-gray-300 mb-2 flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-purple-400" />
+                  Describe Component Improvements
+                </h4>
+                <p className="text-xs text-gray-400 mb-3">
+                  Tell the AI what you want to fix or improve in this test UI component.
+                </p>
+                <textarea
+                  value={improvementRequest}
+                  onChange={(e) => setImprovementRequest(e.target.value)}
+                  placeholder="Example: Change the link to use response.resized_image instead of response.image_url"
+                  className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-gray-200 text-sm min-h-[80px] mb-3 focus:outline-none focus:border-purple-500"
+                />
+                <div className="flex gap-2">
+                  <Button
+                    onClick={() => {
+                      if (!improvementRequest.trim()) {
+                        addToast('Please describe what you want to improve', 'error');
+                        return;
+                      }
+                      setShowImprovementBox(false);
+                      fetchTestUIStream(false, null, 0, null, improvementRequest);
+                      setImprovementRequest('');
+                    }}
+                    className="flex-1 bg-purple-600 hover:bg-purple-700"
+                  >
+                    <Sparkles className="w-4 h-4 mr-2" />
+                    Apply Improvements
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      setShowImprovementBox(false);
+                      setImprovementRequest('');
+                    }}
+                    variant="outline"
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </Card>
+            )}
           </div>
         </>
       )}
