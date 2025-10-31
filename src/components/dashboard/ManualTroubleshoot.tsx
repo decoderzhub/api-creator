@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { MessageSquare, Send, RefreshCw, Wrench, CheckCircle, XCircle } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
+import { CodeDiffViewer } from './CodeDiffViewer';
 import { apiService } from '../../lib/api';
 import { supabase } from '../../lib/supabase';
 
@@ -25,6 +26,7 @@ export function ManualTroubleshoot({
   const [fixStatus, setFixStatus] = useState<'idle' | 'analyzing' | 'fixing' | 'deploying' | 'success' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState('');
   const [containerLogs, setContainerLogs] = useState('');
+  const [fixedCode, setFixedCode] = useState<string | null>(null);
 
   const handleManualFix = async () => {
     if (!errorDescription.trim()) {
@@ -57,11 +59,14 @@ export function ManualTroubleshoot({
         errorContext
       );
 
-      const fixedCode = fixResponse.fixed_code;
+      const generatedFixedCode = fixResponse.fixed_code;
 
-      if (!fixedCode) {
+      if (!generatedFixedCode) {
         throw new Error('AI could not generate a fix for this error');
       }
+
+      // Save the fixed code to show diff
+      setFixedCode(generatedFixedCode);
 
       // Step 4: Update the API with fixed code
       setFixStatus('deploying');
@@ -73,7 +78,7 @@ export function ManualTroubleshoot({
       const { error: updateError } = await supabase
         .from('apis')
         .update({
-          code_snapshot: fixedCode,
+          code_snapshot: generatedFixedCode,
           updated_at: new Date().toISOString()
         })
         .eq('id', apiId)
@@ -203,11 +208,21 @@ export function ManualTroubleshoot({
           </div>
         )}
 
+        {/* Code Diff - Show what changed */}
+        {fixedCode && (fixStatus === 'deploying' || fixStatus === 'success') && (
+          <CodeDiffViewer
+            title="Code Changes Applied"
+            originalCode={originalCode}
+            fixedCode={fixedCode}
+            language="python"
+          />
+        )}
+
         {/* Success State */}
         {fixStatus === 'success' && (
           <div className="flex items-center gap-2 text-xs text-green-400">
             <CheckCircle className="w-3 h-3" />
-            Your API should be working now. Refreshing diagnostics...
+            Your API should be working now. Container rebuilt with changes above. Refreshing diagnostics...
           </div>
         )}
 

@@ -19,6 +19,10 @@ class DeployAPIRequest(BaseModel):
 async def deploy_api(request: DeployAPIRequest, user_id: str = Depends(verify_token), req: Request = None):
     """Deploy an API by rebuilding its Docker container with latest code and updating status"""
     try:
+        from logger import logger
+
+        logger.info(f"=== DEPLOY API REQUEST for {request.apiId} ===")
+
         supabase = get_supabase_client()
         response = supabase.table("apis").select("*").eq("id", request.apiId).eq("user_id", user_id).execute()
 
@@ -32,10 +36,15 @@ async def deploy_api(request: DeployAPIRequest, user_id: str = Depends(verify_to
         if not code:
             raise HTTPException(status_code=400, detail="API has no code to deploy")
 
+        logger.info(f"Fetched code from database, length: {len(code)} characters")
+        logger.info(f"First 200 chars of code: {code[:200]}...")
+
         # Deploy the API using the deployer (rebuild container with latest code)
         if req and hasattr(req.app.state, 'api_deployer'):
             api_deployer = req.app.state.api_deployer
+            logger.info(f"Calling api_deployer.deploy_api() - this will rebuild the container")
             port = await api_deployer.deploy_api(request.apiId, code, requirements)
+            logger.info(f"Container rebuilt successfully on port {port}")
         else:
             raise HTTPException(status_code=500, detail="API deployer not available")
 
