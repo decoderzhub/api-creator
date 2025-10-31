@@ -88,11 +88,12 @@ export function ManualTroubleshoot({
       setFixStatus('success');
       setErrorDescription(''); // Clear the text area
 
-      // Notify parent component
+      // Wait for container to fully restart before refreshing
+      // Docker containers need time to stop, rebuild, and start
       if (onFixApplied) {
         setTimeout(() => {
           onFixApplied();
-        }, 2000);
+        }, 5000); // Wait 5 seconds for container to stabilize
       }
 
     } catch (error) {
@@ -128,9 +129,9 @@ export function ManualTroubleshoot({
       case 'fixing':
         return 'AI is generating a fix...';
       case 'deploying':
-        return 'Deploying fixed code...';
+        return 'Deploying fixed code and rebuilding container... This may take 30-60 seconds.';
       case 'success':
-        return 'Fix applied and deployed successfully!';
+        return 'Fix applied! Container is restarting. Diagnostics will refresh in a moment.';
       case 'error':
         return errorMessage || 'Failed to apply fix';
       default:

@@ -210,6 +210,7 @@ export default function APIPlayground() {
             {/* Container Controls Card */}
             <ContainerControls
               apiId={apiData.id}
+              containerStatus={diagnostics?.container_status}
               onContainerUpdate={() => {
                 fetchAPIData();
                 fetchDiagnostics();
