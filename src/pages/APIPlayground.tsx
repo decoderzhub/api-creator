@@ -5,8 +5,6 @@ import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { StreamingDynamicTestUI } from '../components/dashboard/StreamingDynamicTestUI';
 import { ContainerTroubleshooter } from '../components/dashboard/ContainerTroubleshooter';
-import { ContainerControls } from '../components/dashboard/ContainerControls';
-import { ManualTroubleshoot } from '../components/dashboard/ManualTroubleshoot';
 import { supabase } from '../lib/supabase';
 import { API_BASE_URL } from '../lib/endpoints';
 
@@ -184,18 +182,6 @@ export default function APIPlayground() {
               }}
             />
 
-            {/* Manual Troubleshoot - Always visible for user-described errors */}
-            <ManualTroubleshoot
-              apiId={apiData.id}
-              apiName={apiData.name}
-              originalCode={apiData.code_snapshot}
-              originalPrompt={originalPrompt}
-              onFixApplied={() => {
-                fetchAPIData();
-                fetchDiagnostics();
-              }}
-            />
-
             <StreamingDynamicTestUI
               apiId={apiData.id}
               apiName={apiData.name}
@@ -207,16 +193,6 @@ export default function APIPlayground() {
 
           {/* Sidebar - Takes 1 column */}
           <div className="lg:col-span-1 space-y-6">
-            {/* Container Controls Card */}
-            <ContainerControls
-              apiId={apiData.id}
-              containerStatus={diagnostics?.container_status}
-              onContainerUpdate={() => {
-                fetchAPIData();
-                fetchDiagnostics();
-              }}
-            />
-
             {/* API Info Card */}
             <Card className="p-4">
               <h3 className="text-sm font-semibold text-gray-300 mb-3 flex items-center gap-2">
