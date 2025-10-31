@@ -12,6 +12,7 @@ interface APIData {
   name: string;
   description: string;
   code_snapshot: string;
+  endpoint_url: string;
   status: string;
   requirements: string | null;
   user_id: string;
@@ -118,7 +119,8 @@ export default function APIPlayground() {
     );
   }
 
-  const apiUrl = `${API_BASE_URL.replace('/api', '')}/run/${apiId}`;
+  // Use the actual endpoint URL from the database
+  const apiUrl = apiData.endpoint_url;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
