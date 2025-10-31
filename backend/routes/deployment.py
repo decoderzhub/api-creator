@@ -47,3 +47,61 @@ async def deploy_api(request: DeployAPIRequest, user_id: str = Depends(verify_to
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to deploy API: {str(e)}")
+
+
+@router.get("/diagnose-api/{api_id}")
+async def diagnose_api(api_id: str, user_id: str = Depends(verify_token), req: Request = None):
+    """Get diagnostic information about a deployed API container"""
+    try:
+        supabase = get_supabase_client()
+
+        # Verify user owns this API
+        response = supabase.table("apis").select("*").eq("id", api_id).eq("user_id", user_id).execute()
+        if not response.data:
+            raise HTTPException(status_code=404, detail="API not found")
+
+        # Get container diagnostics
+        if req and hasattr(req.app.state, 'api_deployer'):
+            api_deployer = req.app.state.api_deployer
+            diagnosis = await api_deployer.diagnose_container_error(api_id)
+            return {
+                "success": True,
+                "apiId": api_id,
+                "diagnosis": diagnosis
+            }
+        else:
+            raise HTTPException(status_code=500, detail="API deployer not available")
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to diagnose API: {str(e)}")
+
+
+@router.get("/container-logs/{api_id}")
+async def get_container_logs(api_id: str, user_id: str = Depends(verify_token), req: Request = None, tail: int = 100):
+    """Get container logs for an API"""
+    try:
+        supabase = get_supabase_client()
+
+        # Verify user owns this API
+        response = supabase.table("apis").select("*").eq("id", api_id).eq("user_id", user_id).execute()
+        if not response.data:
+            raise HTTPException(status_code=404, detail="API not found")
+
+        # Get logs
+        if req and hasattr(req.app.state, 'api_deployer'):
+            api_deployer = req.app.state.api_deployer
+            logs = api_deployer.get_container_logs(api_id, tail=tail)
+            return {
+                "success": True,
+                "apiId": api_id,
+                "logs": logs
+            }
+        else:
+            raise HTTPException(status_code=500, detail="API deployer not available")
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get logs: {str(e)}")

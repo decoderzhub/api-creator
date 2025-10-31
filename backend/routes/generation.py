@@ -1358,3 +1358,119 @@ async def activate_test_ui(component_id: str, user_id: str = Depends(verify_toke
     except Exception as e:
         logger.error(f"Failed to activate test UI: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to activate test UI: {str(e)}")
+
+
+class TroubleshootRequest(BaseModel):
+    apiId: str
+    originalCode: str
+    originalPrompt: str
+    errorLogs: str
+
+
+@router.post("/troubleshoot-api")
+async def troubleshoot_api(request: TroubleshootRequest, user_id: str = Depends(verify_token)):
+    """Analyze container errors and fix the API code"""
+    try:
+        if not settings.anthropic_api_key:
+            raise HTTPException(status_code=500, detail="Anthropic API key not configured")
+
+        client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+
+        system_prompt = """You are an expert DevOps and Python debugging specialist. Analyze Docker container errors and fix FastAPI code.
+
+Your job is to:
+1. Analyze the error logs from a failed Docker container
+2. Identify the root cause of the failure
+3. Generate FIXED Python code that resolves the issue
+4. Return ONLY the corrected Python code with no explanations
+
+Common issues to look for:
+- Missing imports or dependencies
+- Syntax errors in Python code
+- Runtime errors (NameError, AttributeError, etc.)
+- Environment variable issues
+- MinIO connection errors
+- File handling errors
+- Type errors or validation issues
+- CORS configuration problems
+
+CRITICAL FIX PATTERNS:
+
+1. Missing imports - Add them at the top:
+   - from io import BytesIO
+   - import json
+   - import uuid
+   - from minio import Minio
+
+2. Environment variables - Always include defaults:
+   - PUBLIC_HOSTNAME = os.getenv("PUBLIC_HOSTNAME", "localhost:8000")
+   - MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT", "minio.systemd.diskstation.me")
+
+3. MinIO errors - Wrap in try/except:
+   ```python
+   try:
+       if not minio_client.bucket_exists(bucket_name):
+           minio_client.make_bucket(bucket_name)
+   except Exception as e:
+       pass  # Bucket might already exist
+   ```
+
+4. File storage - NEVER use local disk, always MinIO:
+   - Remove: os.makedirs(), open(file, 'wb'), StaticFiles
+   - Use: MinIO upload with proper error handling
+
+5. Type errors - Ensure proper type conversions:
+   - Parse form data: width = int(width) if isinstance(width, str) else width
+   - Handle None values: value = value or default_value
+
+Return ONLY the fixed Python code that can be directly executed. Do NOT include explanations or markdown."""
+
+        user_prompt = f"""Original Prompt: {request.originalPrompt}
+
+API ID: {request.apiId}
+
+Original Code:
+```python
+{request.originalCode}
+```
+
+Container Error Logs:
+```
+{request.errorLogs}
+```
+
+Analyze the error logs, identify the issue, and return the COMPLETE FIXED Python code. Include ALL necessary imports and ensure the code follows best practices."""
+
+        message = client.messages.create(
+            model=settings.llm_model,
+            max_tokens=3000,
+            messages=[
+                {"role": "user", "content": f"{system_prompt}\n\n{user_prompt}"}
+            ]
+        )
+
+        fixed_code = message.content[0].text
+        fixed_code = fixed_code.replace("```python", "").replace("```", "").strip()
+
+        # Remove any explanatory text after the code
+        lines = fixed_code.split('\n')
+        clean_lines = []
+        for line in lines:
+            stripped = line.strip()
+            if stripped.startswith('Note:') or stripped.startswith('Important:') or stripped.startswith('Explanation:'):
+                break
+            clean_lines.append(line)
+
+        fixed_code = '\n'.join(clean_lines)
+
+        logger.info(f"Generated fixed code for API {request.apiId}, length: {len(fixed_code)}")
+
+        return {
+            "fixed_code": fixed_code,
+            "language": "python",
+            "framework": "fastapi"
+        }
+
+    except Exception as e:
+        logger.error(f"Troubleshooting failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to troubleshoot API: {str(e)}")

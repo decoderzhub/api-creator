@@ -322,3 +322,56 @@ CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
                     'error': str(e)
                 }
         return result
+
+    def get_container_logs(self, api_id: str, tail: int = 100) -> str:
+        """Get logs from a container"""
+        if api_id not in self.api_containers:
+            return f"Container for API {api_id} not found"
+
+        try:
+            container = self.api_containers[api_id]['container']
+            logs = container.logs(tail=tail).decode('utf-8')
+            return logs
+        except Exception as e:
+            logger.error(f"Error getting logs for API {api_id}: {str(e)}")
+            return f"Error getting logs: {str(e)}"
+
+    async def diagnose_container_error(self, api_id: str) -> Dict:
+        """Diagnose why a container failed or is not responding"""
+        if api_id not in self.api_containers:
+            return {
+                'status': 'not_deployed',
+                'error': 'Container not found',
+                'logs': '',
+                'diagnosis': 'API has not been deployed yet'
+            }
+
+        try:
+            container = self.api_containers[api_id]['container']
+            container.reload()
+
+            logs = self.get_container_logs(api_id, tail=200)
+
+            diagnosis = {
+                'status': container.status,
+                'logs': logs,
+                'port': self.api_containers[api_id]['port']
+            }
+
+            if container.status == 'exited':
+                exit_code = container.attrs.get('State', {}).get('ExitCode', -1)
+                diagnosis['exit_code'] = exit_code
+                diagnosis['error'] = 'Container exited unexpectedly'
+            elif container.status == 'restarting':
+                diagnosis['error'] = 'Container is in restart loop'
+
+            return diagnosis
+
+        except Exception as e:
+            logger.error(f"Error diagnosing API {api_id}: {str(e)}")
+            return {
+                'status': 'error',
+                'error': str(e),
+                'logs': '',
+                'diagnosis': f'Failed to diagnose: {str(e)}'
+            }

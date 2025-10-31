@@ -227,4 +227,50 @@ export const apiService = {
 
     return response.json();
   },
+
+  diagnoseAPI: async (apiId: string) => {
+    const headers = await getAuthHeaders();
+    const response = await fetch(`${FASTAPI_BACKEND_URL}/api/diagnose-api/${apiId}`, {
+      method: 'GET',
+      headers,
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ detail: 'Failed to diagnose API' }));
+      throw new Error(error.detail || 'Failed to diagnose API');
+    }
+
+    return response.json();
+  },
+
+  getContainerLogs: async (apiId: string, tail: number = 100) => {
+    const headers = await getAuthHeaders();
+    const response = await fetch(`${FASTAPI_BACKEND_URL}/api/container-logs/${apiId}?tail=${tail}`, {
+      method: 'GET',
+      headers,
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ detail: 'Failed to get container logs' }));
+      throw new Error(error.detail || 'Failed to get container logs');
+    }
+
+    return response.json();
+  },
+
+  troubleshootAPI: async (apiId: string, originalCode: string, originalPrompt: string, errorLogs: string) => {
+    const headers = await getAuthHeaders();
+    const response = await fetch(`${FASTAPI_BACKEND_URL}/api/troubleshoot-api`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ apiId, originalCode, originalPrompt, errorLogs }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ detail: 'Failed to troubleshoot API' }));
+      throw new Error(error.detail || 'Failed to troubleshoot API');
+    }
+
+    return response.json();
+  },
 };
