@@ -203,7 +203,7 @@ export default function APIPlayground() {
               originalCode={apiData.code_snapshot}
               originalPrompt={originalPrompt}
               onFixApplied={() => {
-                fetchAPIData();
+                fetchAPIData(true);
                 fetchDiagnostics();
               }}
             />
@@ -224,7 +224,7 @@ export default function APIPlayground() {
               apiId={apiData.id}
               containerStatus={diagnostics?.container_status}
               onContainerUpdate={() => {
-                fetchAPIData();
+                fetchAPIData(true);
                 fetchDiagnostics();
               }}
             />
