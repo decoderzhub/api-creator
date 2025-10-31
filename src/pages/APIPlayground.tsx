@@ -4,6 +4,7 @@ import { ArrowLeft, Activity, AlertTriangle, Clock, Database, Server } from 'luc
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { StreamingDynamicTestUI } from '../components/dashboard/StreamingDynamicTestUI';
+import { ContainerTroubleshooter } from '../components/dashboard/ContainerTroubleshooter';
 import { supabase } from '../lib/supabase';
 import { API_BASE_URL } from '../lib/endpoints';
 
@@ -11,11 +12,13 @@ interface APIData {
   id: string;
   name: string;
   description: string;
+  prompt?: string;
   code_snapshot: string;
   endpoint_url: string;
   status: string;
   requirements: string | null;
   user_id: string;
+  api_key?: string;
 }
 
 interface DiagnosticsData {
@@ -43,6 +46,7 @@ export default function APIPlayground() {
   const [error, setError] = useState('');
   const [apiKey, setApiKey] = useState('');
   const [showDiagnostics, setShowDiagnostics] = useState(false);
+  const [originalPrompt, setOriginalPrompt] = useState('');
 
   useEffect(() => {
     fetchAPIData();
@@ -66,6 +70,7 @@ export default function APIPlayground() {
 
       if (error) throw error;
       setApiData(data);
+      setOriginalPrompt(data.prompt || data.description || '');
 
       // API key is already stored in the data
       if (data.api_key) {
@@ -164,6 +169,19 @@ export default function APIPlayground() {
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           {/* Main Testing Area - Takes 3 columns */}
           <div className="lg:col-span-3 space-y-6">
+            {/* Container Troubleshooter - Shows when there are errors */}
+            <ContainerTroubleshooter
+              apiId={apiData.id}
+              apiName={apiData.name}
+              originalCode={apiData.code_snapshot}
+              originalPrompt={originalPrompt}
+              containerStatus={diagnostics?.container_status}
+              onFixApplied={() => {
+                fetchAPIData();
+                fetchDiagnostics();
+              }}
+            />
+
             <StreamingDynamicTestUI
               apiId={apiData.id}
               apiName={apiData.name}
