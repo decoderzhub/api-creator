@@ -119,34 +119,104 @@ Requirements:
 9. For any data storage, use simple in-memory structures (dicts, lists) as this is a demo
 10. Do NOT include authentication or rate limiting - keep it simple
 
-11. FILE UPLOADS - CRITICAL GUIDELINES:
-    - Use FastAPI's File and UploadFile from fastapi
-    - CRITICAL: When accepting files with parameters, use Form() for each parameter, NOT Pydantic models
-    - WRONG: async def upload(file: UploadFile = File(...), params: MyModel = None)
-    - RIGHT: async def upload(file: UploadFile = File(...), width: int = Form(...), height: int = Form(...))
-    - Example:
-      ```python
-      from fastapi import FastAPI, File, UploadFile, Form
+11. FILE UPLOADS - STANDARDIZED APPROACH:
 
-      @app.post("/resize")
-      async def resize_image(
-          file: UploadFile = File(...),
-          width: int = Form(...),
-          height: int = Form(...),
-          preserve_aspect_ratio: bool = Form(True)
-      ):
-      ```
-    - Read file content: content = await file.read()
-    - For IMAGE PROCESSING: Use PIL (Pillow) which is available
-      * from PIL import Image
-      * from io import BytesIO
-      * image = Image.open(BytesIO(content))
-      * image = image.resize((width, height))
-      * buffer = BytesIO()
-      * image.save(buffer, format='PNG')
-      * resized_data = buffer.getvalue()
-    - Always validate file type: file.content_type
-    - Add docstring with curl example: curl -X POST -F "file=@image.jpg" -F "width=800" -F "height=600"
+    **RECOMMENDED PATTERN (JSON + Base64) - Use this by default:**
+    This pattern is most reliable, works through all proxies, and matches test UI generation.
+
+    ```python
+    from pydantic import BaseModel
+    import base64
+    from PIL import Image
+    from io import BytesIO
+
+    class ImageProcessRequest(BaseModel):
+        image_data: str  # base64-encoded image
+        width: int
+        height: int
+        preserve_aspect_ratio: bool = True
+        quality: int = 85
+
+    @app.post("/resize")
+    async def resize_image(request: ImageProcessRequest):
+        \"\"\"
+        Resize an image with specified dimensions.
+
+        Request Format: application/json
+
+        Example:
+        ```bash
+        # First, encode image to base64:
+        base64_img=$(base64 -i image.jpg)
+
+        curl -X POST "http://localhost:8000/resize" \\
+          -H "Authorization: Bearer {api_key}" \\
+          -H "Content-Type: application/json" \\
+          -d '{
+            "image_data": "'$base64_img'",
+            "width": 800,
+            "height": 600,
+            "preserve_aspect_ratio": true,
+            "quality": 85
+          }'
+        ```
+
+        Response:
+        {\"status\": \"success\", \"image_url\": \"https://...\", \"width\": 800, \"height\": 600}
+        \"\"\"
+        # Decode base64
+        image_bytes = base64.b64decode(request.image_data)
+        image = Image.open(BytesIO(image_bytes))
+
+        # Process image
+        if request.preserve_aspect_ratio:
+            image.thumbnail((request.width, request.height), Image.LANCZOS)
+        else:
+            image = image.resize((request.width, request.height), Image.LANCZOS)
+
+        # Save to buffer
+        buffer = BytesIO()
+        image.save(buffer, format='JPEG', quality=request.quality)
+        processed_data = buffer.getvalue()
+
+        # Upload to MinIO (see storage section below)
+        # Return URL
+    ```
+
+    **ALTERNATIVE PATTERN (Multipart) - Only for files >10MB:**
+    Use this ONLY if the user specifically mentions large files or videos.
+
+    ```python
+    from fastapi import File, UploadFile, Form
+
+    @app.post("/resize")
+    async def resize_image(
+        file: UploadFile = File(...),
+        width: int = Form(...),
+        height: int = Form(...),
+        preserve_aspect_ratio: bool = Form(True)
+    ):
+        \"\"\"
+        Example:
+        ```bash
+        curl -X POST "http://localhost:8000/resize" \\
+          -H "Authorization: Bearer {api_key}" \\
+          -F "file=@image.jpg" \\
+          -F "width=800" \\
+          -F "height=600" \\
+          -F "preserve_aspect_ratio=true"
+        ```
+        \"\"\"
+        content = await file.read()
+        image = Image.open(BytesIO(content))
+        # ... rest of processing
+    ```
+
+    **CRITICAL DECISION RULE:**
+    - For images, audio, documents <10MB: Use JSON + Base64 pattern
+    - For videos, large files >10MB: Use Multipart pattern
+    - When in doubt: Use JSON + Base64 (it's more reliable)
+    - NEVER mix both patterns in the same endpoint
 
     - CRITICAL: For FILE STORAGE (when files need to be saved and returned as URLs):
       * MANDATORY: Use MinIO S3-compatible storage - DO NOT use local disk storage
@@ -654,23 +724,99 @@ CRITICAL REQUIREMENTS:
    - JSON objects: <textarea> with validation
    - ALWAYS parse number inputs with parseInt() or parseFloat() and provide fallback values
 
-3. For FILE UPLOADS - ANALYZE THE FUNCTION SIGNATURE:
-   - Add proper file input with drag-and-drop
-   - Show file preview (images, audio player, etc.)
-   - Display file size/type validation
-   - Use FormData() for submission
-   - CRITICAL: Include Authorization header even with FormData:
-     * const formData = new FormData();
-     * formData.append('file', file);
-     * fetch(url, { method: 'POST', body: formData, headers: { 'Authorization': `Bearer ${apiKey}` } })
+3. FILE UPLOADS - DETECT AND MATCH API PATTERN:
 
-   - File Upload Pattern (e.g., async def resize(file: UploadFile, width: int = Form(...), height: int = Form(...)))
-     * Append each parameter individually to FormData:
-       const formData = new FormData();
-       formData.append('file', selectedFile);
-       formData.append('width', width.toString());
-       formData.append('height', height.toString());
-       formData.append('preserve_aspect_ratio', preserveRatio.toString());
+   **STEP 1: Analyze the API code to determine which pattern it uses:**
+
+   Pattern A - JSON + Base64 (MOST COMMON):
+   - Function signature has: `request: SomeModel` or `data: BaseModel`
+   - NO `UploadFile` or `File(...)` in the signature
+   - Pydantic model has field like: `image_data: str` or `file_data: str`
+   - Example: `async def resize(request: ImageRequest):`
+
+   Pattern B - Multipart Form-Data (RARE, only for large files):
+   - Function signature has: `file: UploadFile = File(...)`
+   - Other params use: `param: int = Form(...)`
+   - Example: `async def resize(file: UploadFile = File(...), width: int = Form(...)):`
+
+   **STEP 2: Generate matching test UI code:**
+
+   **For Pattern A (JSON + Base64) - Generate THIS:**
+   ```javascript
+   const [file, setFile] = useState(null);
+   const [imageData, setImageData] = useState(null);
+
+   const handleFileChange = (e) => {
+     const selectedFile = e.target.files[0];
+     if (selectedFile) {
+       setFile(selectedFile);
+       // Convert to base64
+       const reader = new FileReader();
+       reader.onloadend = () => {
+         // Remove data:image/jpeg;base64, prefix
+         const base64 = reader.result.split(',')[1];
+         setImageData(base64);
+       };
+       reader.readAsDataURL(selectedFile);
+     }
+   };
+
+   const handleSubmit = async () => {
+     const response = await fetch(`${apiUrl}/resize`, {
+       method: 'POST',
+       headers: {
+         'Authorization': `Bearer ${apiKey}`,
+         'Content-Type': 'application/json'
+       },
+       body: JSON.stringify({
+         image_data: imageData,  // base64 string
+         width: width,
+         height: height,
+         preserve_aspect_ratio: preserveAspectRatio
+       })
+     });
+     const data = await response.json();
+     setResponse(data);
+   };
+   ```
+
+   **For Pattern B (Multipart) - Generate THIS:**
+   ```javascript
+   const [file, setFile] = useState(null);
+
+   const handleFileChange = (e) => {
+     const selectedFile = e.target.files[0];
+     if (selectedFile) {
+       setFile(selectedFile);
+     }
+   };
+
+   const handleSubmit = async () => {
+     const formData = new FormData();
+     formData.append('file', file);
+     formData.append('width', width.toString());
+     formData.append('height', height.toString());
+     formData.append('preserve_aspect_ratio', preserveAspectRatio.toString());
+
+     const response = await fetch(`${apiUrl}/resize`, {
+       method: 'POST',
+       headers: {
+         'Authorization': `Bearer ${apiKey}`
+         // NO Content-Type for multipart!
+       },
+       body: formData
+     });
+     const data = await response.json();
+     setResponse(data);
+   };
+   ```
+
+   **CRITICAL RULES:**
+   - If API uses Pydantic BaseModel → Use JSON + base64 (Pattern A)
+   - If API uses UploadFile + Form() → Use multipart (Pattern B)
+   - NEVER guess - analyze the code to determine the pattern
+   - NEVER mix patterns - match exactly what the API expects
+   - When in doubt, prefer Pattern A (JSON + base64)
 
 4. For each endpoint, create:
    - Clear labeled form fields
