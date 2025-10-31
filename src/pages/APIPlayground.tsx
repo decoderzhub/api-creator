@@ -45,6 +45,7 @@ export default function APIPlayground() {
   const [apiData, setApiData] = useState<APIData | null>(null);
   const [diagnostics, setDiagnostics] = useState<DiagnosticsData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
   const [apiKey, setApiKey] = useState('');
   const [showDiagnostics, setShowDiagnostics] = useState(false);
@@ -57,9 +58,13 @@ export default function APIPlayground() {
     return () => clearInterval(interval);
   }, [apiId]);
 
-  const fetchAPIData = async () => {
+  const fetchAPIData = async (isRefresh = false) => {
     try {
-      setLoading(true);
+      if (isRefresh) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
@@ -82,6 +87,7 @@ export default function APIPlayground() {
       setError(err instanceof Error ? err.message : 'Failed to load API');
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
@@ -131,6 +137,12 @@ export default function APIPlayground() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
+      {refreshing && (
+        <div className="fixed top-4 right-4 z-50 bg-blue-500 text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-2">
+          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+          <span className="text-sm">Refreshing API data...</span>
+        </div>
+      )}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">
@@ -179,7 +191,7 @@ export default function APIPlayground() {
               originalPrompt={originalPrompt}
               containerStatus={diagnostics?.container_status}
               onFixApplied={() => {
-                fetchAPIData();
+                fetchAPIData(true);
                 fetchDiagnostics();
               }}
             />
