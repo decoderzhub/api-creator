@@ -121,3 +121,101 @@ async def get_container_logs(api_id: str, user_id: str = Depends(verify_token), 
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to get logs: {str(e)}")
+
+
+@router.get("/container-info/{api_id}")
+async def get_container_info(api_id: str, user_id: str = Depends(verify_token), req: Request = None):
+    """Get detailed container information including name, ports, status"""
+    try:
+        supabase = get_supabase_client()
+
+        # Verify user owns this API
+        response = supabase.table("apis").select("*").eq("id", api_id).eq("user_id", user_id).execute()
+        if not response.data:
+            raise HTTPException(status_code=404, detail="API not found")
+
+        # Get container info
+        if req and hasattr(req.app.state, 'api_deployer'):
+            api_deployer = req.app.state.api_deployer
+            info = api_deployer.get_container_info(api_id)
+            return {
+                "success": True,
+                "apiId": api_id,
+                "container": info
+            }
+        else:
+            raise HTTPException(status_code=500, detail="API deployer not available")
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get container info: {str(e)}")
+
+
+@router.post("/container-stop/{api_id}")
+async def stop_container(api_id: str, user_id: str = Depends(verify_token), req: Request = None):
+    """Stop a running container"""
+    try:
+        supabase = get_supabase_client()
+
+        # Verify user owns this API
+        response = supabase.table("apis").select("*").eq("id", api_id).eq("user_id", user_id).execute()
+        if not response.data:
+            raise HTTPException(status_code=404, detail="API not found")
+
+        # Stop container
+        if req and hasattr(req.app.state, 'api_deployer'):
+            api_deployer = req.app.state.api_deployer
+            success = await api_deployer.stop_api(api_id)
+            if success:
+                return {
+                    "success": True,
+                    "apiId": api_id,
+                    "message": "Container stopped successfully"
+                }
+            else:
+                raise HTTPException(status_code=404, detail="Container not found")
+        else:
+            raise HTTPException(status_code=500, detail="API deployer not available")
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to stop container: {str(e)}")
+
+
+@router.post("/container-start/{api_id}")
+async def start_container(api_id: str, user_id: str = Depends(verify_token), req: Request = None):
+    """Start/restart a container with current code"""
+    try:
+        supabase = get_supabase_client()
+
+        # Verify user owns this API and get the code
+        response = supabase.table("apis").select("*").eq("id", api_id).eq("user_id", user_id).execute()
+        if not response.data:
+            raise HTTPException(status_code=404, detail="API not found")
+
+        api_data = response.data[0]
+        code = api_data.get("code_snapshot")
+        requirements = api_data.get("requirements")
+
+        if not code:
+            raise HTTPException(status_code=400, detail="API has no code to deploy")
+
+        # Deploy/restart container
+        if req and hasattr(req.app.state, 'api_deployer'):
+            api_deployer = req.app.state.api_deployer
+            port = await api_deployer.deploy_api(api_id, code, requirements)
+            return {
+                "success": True,
+                "apiId": api_id,
+                "port": port,
+                "message": "Container started successfully"
+            }
+        else:
+            raise HTTPException(status_code=500, detail="API deployer not available")
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to start container: {str(e)}")

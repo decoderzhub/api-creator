@@ -336,6 +336,40 @@ CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
             logger.error(f"Error getting logs for API {api_id}: {str(e)}")
             return f"Error getting logs: {str(e)}"
 
+    def get_container_info(self, api_id: str) -> Dict:
+        """Get detailed container information including name, ports, status"""
+        if api_id not in self.api_containers:
+            return {
+                'exists': False,
+                'error': 'Container not found'
+            }
+
+        try:
+            container = self.api_containers[api_id]['container']
+            container.reload()
+
+            # Get port mappings
+            port_mappings = container.attrs.get('NetworkSettings', {}).get('Ports', {})
+            host_port = self.api_containers[api_id]['port']
+
+            return {
+                'exists': True,
+                'name': container.name,
+                'id': container.short_id,
+                'status': container.status,
+                'host_port': host_port,
+                'internal_port': 8000,
+                'image': self.api_containers[api_id]['image'],
+                'created': container.attrs.get('Created', ''),
+                'state': container.attrs.get('State', {})
+            }
+        except Exception as e:
+            logger.error(f"Error getting container info for API {api_id}: {str(e)}")
+            return {
+                'exists': True,
+                'error': str(e)
+            }
+
     async def diagnose_container_error(self, api_id: str) -> Dict:
         """Diagnose why a container failed or is not responding"""
         if api_id not in self.api_containers:

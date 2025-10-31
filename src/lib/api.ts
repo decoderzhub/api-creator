@@ -273,4 +273,49 @@ export const apiService = {
 
     return response.json();
   },
+
+  getContainerInfo: async (apiId: string) => {
+    const headers = await getAuthHeaders();
+    const response = await fetch(`${FASTAPI_BACKEND_URL}/api/container-info/${apiId}`, {
+      method: 'GET',
+      headers,
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ detail: 'Failed to get container info' }));
+      throw new Error(error.detail || 'Failed to get container info');
+    }
+
+    return response.json();
+  },
+
+  stopContainer: async (apiId: string) => {
+    const headers = await getAuthHeaders();
+    const response = await fetch(`${FASTAPI_BACKEND_URL}/api/container-stop/${apiId}`, {
+      method: 'POST',
+      headers,
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ detail: 'Failed to stop container' }));
+      throw new Error(error.detail || 'Failed to stop container');
+    }
+
+    return response.json();
+  },
+
+  startContainer: async (apiId: string) => {
+    const headers = await getAuthHeaders();
+    const response = await fetch(`${FASTAPI_BACKEND_URL}/api/container-start/${apiId}`, {
+      method: 'POST',
+      headers,
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ detail: 'Failed to start container' }));
+      throw new Error(error.detail || 'Failed to start container');
+    }
+
+    return response.json();
+  },
 };
