@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { Trash2, ExternalLink, Copy, List, ChevronDown, ChevronUp, CreditCard as Edit2, Check, Code, Zap, Play, Globe, FlaskConical } from 'lucide-react';
+import { Trash2, ExternalLink, Copy, List, ChevronDown, ChevronUp, CreditCard as Edit2, Check, Code, Zap, Play, Globe, FlaskConical, RefreshCw } from 'lucide-react';
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
 import { API } from '../../lib/types';
@@ -25,6 +25,7 @@ interface APICardProps {
   onDelete: (apiId: string) => void;
   onPublish: (api: API) => void;
   onCopyToClipboard: (text: string) => void;
+  onRegenerate: (api: API) => void;
 }
 
 export const APICard = ({
@@ -45,6 +46,7 @@ export const APICard = ({
   onDelete,
   onPublish,
   onCopyToClipboard,
+  onRegenerate,
 }: APICardProps) => {
   const navigate = useNavigate();
   const endpoints = api.code_snapshot ? parseEndpointsFromCode(api.code_snapshot) : [];
@@ -237,6 +239,9 @@ export const APICard = ({
         </button>
 
         <div className="flex gap-2">
+          <Button size="sm" variant="ghost" onClick={() => onRegenerate(api)} title="Regenerate API Code">
+            <RefreshCw className="w-4 h-4" />
+          </Button>
           {canViewCode && api.code_snapshot && (
             <Button size="sm" variant="ghost" onClick={() => onViewCode(api)} title="View Code">
               <Code className="w-4 h-4" />
