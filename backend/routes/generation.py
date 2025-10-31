@@ -1522,15 +1522,15 @@ async def troubleshoot_api(request: TroubleshootRequest, user_id: str = Depends(
 
         client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
 
-        system_prompt = """You are an expert DevOps and Python debugging specialist. Analyze Docker container errors and fix FastAPI code.
+        system_prompt = """You are an expert DevOps and Python FastAPI specialist. Your job is to either:
+A) Fix errors in broken FastAPI code, OR
+B) Refactor/improve existing FastAPI code based on user instructions
 
-Your job is to:
-1. Analyze the error logs from a failed Docker container
-2. Identify the root cause of the failure
-3. Generate FIXED Python code that resolves the issue
-4. Return ONLY the corrected Python code with no explanations
+IMPORTANT: The "Container Error Logs" section may contain either actual error logs OR user instructions for refactoring.
+- If it looks like error logs (stack traces, exceptions), FIX the errors
+- If it looks like instructions (e.g., "Convert to JSON", "Add validation"), FOLLOW the instructions
 
-Common issues to look for:
+Common error fixing patterns:
 - Missing imports or dependencies
 - Syntax errors in Python code
 - Runtime errors (NameError, AttributeError, etc.)
@@ -1540,19 +1540,56 @@ Common issues to look for:
 - Type errors or validation issues
 - CORS configuration problems
 
-CRITICAL FIX PATTERNS:
+Common refactoring patterns:
+- Converting multipart/form-data to JSON + base64
+- Adding error handling and validation
+- Modernizing code structure
+- Improving performance
 
-1. Missing imports - Add them at the top:
+CRITICAL PATTERNS:
+
+1. CONVERTING MULTIPART TO JSON + BASE64:
+   When asked to convert to JSON format:
+
+   FROM (multipart):
+   ```python
+   @app.post("/endpoint")
+   async def handler(
+       file: UploadFile = File(...),
+       width: int = Form(...),
+       height: int = Form(...)
+   ):
+       content = await file.read()
+   ```
+
+   TO (JSON + base64):
+   ```python
+   from pydantic import BaseModel
+   import base64
+
+   class EndpointRequest(BaseModel):
+       image_data: str  # base64-encoded file
+       width: int
+       height: int
+
+   @app.post("/endpoint")
+   async def handler(request: EndpointRequest):
+       # Decode base64
+       file_bytes = base64.b64decode(request.image_data)
+   ```
+
+2. Missing imports - Add them at the top:
    - from io import BytesIO
    - import json
    - import uuid
    - from minio import Minio
+   - import base64
 
-2. Environment variables - Always include defaults:
+3. Environment variables - Always include defaults:
    - PUBLIC_HOSTNAME = os.getenv("PUBLIC_HOSTNAME", "localhost:8000")
    - MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT", "minio.systemd.diskstation.me")
 
-3. MinIO errors - Wrap in try/except:
+4. MinIO errors - Wrap in try/except:
    ```python
    try:
        if not minio_client.bucket_exists(bucket_name):
@@ -1561,15 +1598,15 @@ CRITICAL FIX PATTERNS:
        pass  # Bucket might already exist
    ```
 
-4. File storage - NEVER use local disk, always MinIO:
+5. File storage - NEVER use local disk, always MinIO:
    - Remove: os.makedirs(), open(file, 'wb'), StaticFiles
    - Use: MinIO upload with proper error handling
 
-5. Type errors - Ensure proper type conversions:
+6. Type errors - Ensure proper type conversions:
    - Parse form data: width = int(width) if isinstance(width, str) else width
    - Handle None values: value = value or default_value
 
-Return ONLY the fixed Python code that can be directly executed. Do NOT include explanations or markdown."""
+Return ONLY the complete, working Python code. Do NOT include explanations or markdown formatting."""
 
         user_prompt = f"""Original Prompt: {request.originalPrompt}
 
