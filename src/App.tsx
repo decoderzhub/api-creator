@@ -54,6 +54,7 @@ const MainLayout = ({ children }: { children: React.ReactNode }) => {
           theme={theme}
           toggleTheme={toggleTheme}
           userEmail={profile?.email}
+          userId={profile?.id}
           userPlan={profile?.plan}
         />
         <main className="flex-1 overflow-y-auto bg-gradient-to-br from-background via-background to-muted/20">

@@ -6,10 +6,11 @@ interface HeaderProps {
   theme: 'light' | 'dark';
   toggleTheme: () => void;
   userEmail?: string;
+  userId?: string;
   userPlan?: string;
 }
 
-export const Header = ({ theme, toggleTheme, userEmail, userPlan }: HeaderProps) => {
+export const Header = ({ theme, toggleTheme, userEmail, userId, userPlan }: HeaderProps) => {
   return (
     <header className="h-16 border-b bg-card px-6 flex items-center justify-between backdrop-blur-sm">
       <div className="flex items-center gap-4">
@@ -54,7 +55,7 @@ export const Header = ({ theme, toggleTheme, userEmail, userPlan }: HeaderProps)
             </div>
             <div className="text-sm">
               <p className="font-medium text-foreground">{userEmail}</p>
-              <p className="text-xs text-muted-foreground font-mono">ID: {userEmail.slice(0, 8)}</p>
+              <p className="text-xs text-muted-foreground font-mono">ID: {userId?.slice(0, 8) || 'N/A'}</p>
             </div>
             {userPlan && (
               <Badge
