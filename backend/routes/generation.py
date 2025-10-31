@@ -164,8 +164,13 @@ Requirements:
         Response:
         {\"status\": \"success\", \"image_url\": \"https://...\", \"width\": 800, \"height\": 600}
         \"\"\"
+        # Strip data URI prefix if present (e.g., "data:image/png;base64,")
+        image_data = request.image_data
+        if ',' in image_data and image_data.startswith('data:'):
+            image_data = image_data.split(',', 1)[1]
+
         # Decode base64
-        image_bytes = base64.b64decode(request.image_data)
+        image_bytes = base64.b64decode(image_data)
         image = Image.open(BytesIO(image_bytes))
 
         # Process image
@@ -1574,8 +1579,13 @@ CRITICAL PATTERNS:
 
    @app.post("/endpoint")
    async def handler(request: EndpointRequest):
+       # Strip data URI prefix if present (e.g., "data:image/png;base64,")
+       image_data = request.image_data
+       if ',' in image_data and image_data.startswith('data:'):
+           image_data = image_data.split(',', 1)[1]
+
        # Decode base64
-       file_bytes = base64.b64decode(request.image_data)
+       file_bytes = base64.b64decode(image_data)
    ```
 
 2. Missing imports - Add them at the top:
