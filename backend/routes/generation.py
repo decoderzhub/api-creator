@@ -79,6 +79,14 @@ Requirements:
    - Response format
 6. Follow REST best practices
 7. Return ONLY the Python code, no explanations
+
+0. CRITICAL - FILE STORAGE:
+   - NEVER save files to local disk (no os.makedirs, no local file writes)
+   - ALWAYS use MinIO S3-compatible storage for any file that needs to be saved
+   - Files are stored in MinIO and URLs are returned to users
+   - MinIO credentials are available in environment variables
+   - This is NON-NEGOTIABLE for all file storage operations
+
 0. CRITICAL: ALWAYS include CORS middleware configuration at the start of the app:
    ```python
    from fastapi.middleware.cors import CORSMiddleware
@@ -141,18 +149,21 @@ Requirements:
     - Add docstring with curl example: curl -X POST -F "file=@image.jpg" -F "width=800" -F "height=600"
 
     - CRITICAL: For FILE STORAGE (when files need to be saved and returned as URLs):
-      * ALWAYS use MinIO S3-compatible storage
-      * Import minio library: from minio import Minio
-      * Get credentials from environment:
+      * MANDATORY: Use MinIO S3-compatible storage - DO NOT use local disk storage
+      * Import: from minio import Minio, from io import BytesIO
+      * Get credentials from environment (ALWAYS include this):
         ```python
+        import os
+        from minio import Minio
+        from io import BytesIO
+
         MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT", "minio.systemd.diskstation.me")
         MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY", "admin")
         MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY", "")
         MINIO_PUBLIC_URL = os.getenv("MINIO_PUBLIC_URL", "https://minio.systemd.diskstation.me")
         MINIO_SECURE = os.getenv("MINIO_SECURE", "true").lower() == "true"
-        ```
-      * Initialize MinIO client:
-        ```python
+
+        # Initialize MinIO client
         minio_client = Minio(
             MINIO_ENDPOINT,
             access_key=MINIO_ACCESS_KEY,
@@ -160,42 +171,49 @@ Requirements:
             secure=MINIO_SECURE
         )
         ```
-      * Upload files to MinIO and return public URLs:
+      * Upload files to MinIO (COMPLETE EXAMPLE):
         ```python
         import uuid
-        from minio.error import S3Error
 
-        # Ensure bucket exists
+        # Ensure bucket exists (do this once at startup or in endpoint)
         bucket_name = "user-uploads"
-        if not minio_client.bucket_exists(bucket_name):
-            minio_client.make_bucket(bucket_name)
-            # Set public read policy
-            policy = f'''{{
-                "Version": "2012-10-17",
-                "Statement": [{{
-                    "Effect": "Allow",
-                    "Principal": {{"AWS": ["*"]}},
-                    "Action": ["s3:GetObject"],
-                    "Resource": ["arn:aws:s3:::{bucket_name}/*"]
-                }}]
-            }}'''
-            minio_client.set_bucket_policy(bucket_name, policy)
+        try:
+            if not minio_client.bucket_exists(bucket_name):
+                minio_client.make_bucket(bucket_name)
+                # Set public read policy
+                policy = {
+                    "Version": "2012-10-17",
+                    "Statement": [{
+                        "Effect": "Allow",
+                        "Principal": {"AWS": ["*"]},
+                        "Action": ["s3:GetObject"],
+                        "Resource": [f"arn:aws:s3:::{bucket_name}/*"]
+                    }]
+                }
+                import json
+                minio_client.set_bucket_policy(bucket_name, json.dumps(policy))
+        except Exception as e:
+            pass  # Bucket might already exist with policy
 
-        # Upload file
+        # Upload processed file
         file_id = str(uuid.uuid4())
-        filename = f"{file_id}.jpg"
+        file_extension = ".jpg"  # or get from original file
+        filename = f"{file_id}{file_extension}"
+
+        # processed_file_data should be bytes (from image.save(), etc)
         minio_client.put_object(
             bucket_name,
             filename,
             BytesIO(processed_file_data),
             len(processed_file_data),
-            content_type="image/jpeg"
+            content_type="image/jpeg"  # or appropriate mime type
         )
 
-        # Return public URL
+        # Return the public URL that users can access
         public_url = f"{MINIO_PUBLIC_URL}/{bucket_name}/{filename}"
         ```
-      * NEVER save files to local disk - always use MinIO for persistence
+      * NEVER use: os.makedirs(), open(file, 'wb'), StaticFiles, local file paths
+      * ALWAYS return MinIO URLs in responses
 
 12. SPECIAL INTEGRATIONS:
     - For sound/audio APIs, integrate Freesound.org API:
@@ -248,6 +266,115 @@ Requirements:
     \"\"\"
 
 The code should be a complete, self-contained FastAPI application that can be executed with only the standard libraries listed above.
+
+COMPLETE EXAMPLE - Image Resizer API with MinIO Storage:
+```python
+from fastapi import FastAPI, File, UploadFile, Form, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from PIL import Image
+from io import BytesIO
+from minio import Minio
+import os
+import uuid
+import json
+
+app = FastAPI(title="Image Resizer API")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Environment variables
+PUBLIC_HOSTNAME = os.getenv("PUBLIC_HOSTNAME", "localhost:8000")
+API_ID = os.getenv("API_ID", "")
+MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT", "minio.systemd.diskstation.me")
+MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY", "admin")
+MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY", "")
+MINIO_PUBLIC_URL = os.getenv("MINIO_PUBLIC_URL", "https://minio.systemd.diskstation.me")
+MINIO_SECURE = os.getenv("MINIO_SECURE", "true").lower() == "true"
+
+# Initialize MinIO
+minio_client = Minio(
+    MINIO_ENDPOINT,
+    access_key=MINIO_ACCESS_KEY,
+    secret_key=MINIO_SECRET_KEY,
+    secure=MINIO_SECURE
+)
+
+class ResizeResponse(BaseModel):
+    status: str
+    original_width: int
+    original_height: int
+    new_width: int
+    new_height: int
+    image_url: str
+
+@app.post("/resize/{width}/{height}", response_model=ResizeResponse)
+async def resize_image(width: int, height: int, file: UploadFile = File(...)):
+    # Validate
+    if not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="File must be an image")
+
+    # Process image
+    content = await file.read()
+    image = Image.open(BytesIO(content))
+    original_width, original_height = image.size
+    image = image.resize((width, height), Image.LANCZOS)
+
+    # Save to buffer
+    buffer = BytesIO()
+    image.save(buffer, format='JPEG')
+    image_data = buffer.getvalue()
+
+    # Upload to MinIO
+    bucket_name = "user-uploads"
+    try:
+        if not minio_client.bucket_exists(bucket_name):
+            minio_client.make_bucket(bucket_name)
+            policy = {
+                "Version": "2012-10-17",
+                "Statement": [{
+                    "Effect": "Allow",
+                    "Principal": {"AWS": ["*"]},
+                    "Action": ["s3:GetObject"],
+                    "Resource": [f"arn:aws:s3:::{bucket_name}/*"]
+                }]
+            }
+            minio_client.set_bucket_policy(bucket_name, json.dumps(policy))
+    except:
+        pass
+
+    file_id = str(uuid.uuid4())
+    filename = f"{file_id}.jpg"
+    minio_client.put_object(
+        bucket_name,
+        filename,
+        BytesIO(image_data),
+        len(image_data),
+        content_type="image/jpeg"
+    )
+
+    # Return MinIO URL
+    image_url = f"{MINIO_PUBLIC_URL}/{bucket_name}/{filename}"
+
+    return ResizeResponse(
+        status="success",
+        original_width=original_width,
+        original_height=original_height,
+        new_width=width,
+        new_height=height,
+        image_url=image_url
+    )
+
+@app.get("/")
+async def root():
+    return {"message": "Image Resizer API. Go to /docs for documentation."}
+```
 
 CRITICAL OUTPUT REQUIREMENTS:
 - Return ONLY executable Python code
