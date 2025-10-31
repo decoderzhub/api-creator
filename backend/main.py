@@ -519,7 +519,12 @@ async def proxy_to_user_api(
 
         headers_to_forward = {
             k: v for k, v in request.headers.items()
-            if k.lower() not in ['host', 'content-length', 'transfer-encoding']
+            if k.lower() not in [
+                'host',
+                'content-length',
+                'transfer-encoding',
+                'content-type'  # Let httpx set this with correct boundary for multipart
+            ]
         }
 
         async with httpx.AsyncClient(timeout=30.0) as client:

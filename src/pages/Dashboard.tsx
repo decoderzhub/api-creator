@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Trash2, Globe, Code, Check, Edit2, X, Copy,
-  BookmarkX, Bookmark, Key, Zap, ChevronDown, ChevronUp, List
+  BookmarkX, Bookmark, Key, Zap, ChevronDown, ChevronUp, List, RefreshCw
 } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
@@ -17,6 +17,7 @@ import { APICard } from '../components/dashboard/APICard';
 import { SavedAPICard } from '../components/dashboard/SavedAPICard';
 import { PublishModal } from '../components/dashboard/PublishModal';
 import { CodeModal } from '../components/dashboard/CodeModal';
+import { RegenerateAPIModal } from '../components/dashboard/RegenerateAPIModal';
 import { parseEndpointsFromCode, formatCurlExample } from '../lib/endpoints';
 
 interface SavedAPI {
@@ -57,6 +58,8 @@ export const Dashboard = () => {
   const [editAbout, setEditAbout] = useState('');
   const [saveLoading, setSaveLoading] = useState(false);
   const [codeModalOpen, setCodeModalOpen] = useState(false);
+  const [regenerateModalOpen, setRegenerateModalOpen] = useState(false);
+  const [regeneratingApi, setRegeneratingApi] = useState<API | null>(null);
   const [expandedApiId, setExpandedApiId] = useState<string | null>(null);
   const [viewingCode, setViewingCode] = useState<{ name: string; code: string } | null>(null);
   const [codeCopied, setCodeCopied] = useState(false);
@@ -266,6 +269,22 @@ export const Dashboard = () => {
     } catch (err: any) {
       addToast(err.message || 'Failed to delete API', 'error');
     }
+  };
+
+  const openRegenerateModal = (api: API) => {
+    setRegeneratingApi(api);
+    setRegenerateModalOpen(true);
+  };
+
+  const closeRegenerateModal = () => {
+    setRegenerateModalOpen(false);
+    setRegeneratingApi(null);
+  };
+
+  const handleRegenerateSuccess = () => {
+    addToast('API regenerated successfully!', 'success');
+    closeRegenerateModal();
+    loadAPIs();
   };
 
   const copyToClipboard = (text: string) => {
@@ -841,6 +860,15 @@ export const Dashboard = () => {
                           View Code
                         </Button>
                       )}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => openRegenerateModal(api)}
+                        title="Regenerate API Code"
+                      >
+                        <RefreshCw className="w-4 h-4 mr-1" />
+                        Regenerate
+                      </Button>
                       {!api.is_published && (
                         <Button
                           size="sm"
@@ -906,6 +934,17 @@ export const Dashboard = () => {
           }}
         />
       </AnimatePresence>
+
+      {regenerateModalOpen && regeneratingApi && (
+        <RegenerateAPIModal
+          apiId={regeneratingApi.id}
+          apiName={regeneratingApi.name}
+          originalPrompt={regeneratingApi.prompt || ''}
+          currentCode={regeneratingApi.code_snapshot || ''}
+          onClose={closeRegenerateModal}
+          onSuccess={handleRegenerateSuccess}
+        />
+      )}
     </div>
   );
 };
